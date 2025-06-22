@@ -186,3 +186,32 @@ docker compose down
 # docker compose down -v
 ```
 
+### 8 Git  
+
+```bash
+git remote -v
+
+# Remove the Original Remote
+
+git remote remove origin
+
+# Add Your Fork as the New Remote
+git remote add origin https://github.com/todor1/time-series-mongodb-pymongo.git
+git remote add upstream https://github.com/todor1/time-series-mongodb-pymongo.git
+
+# Push to Your Fork
+git push -u origin main
+
+
+# Then you can fetch and merge changes from the original repo like this:
+# git fetch upstream
+# git merge upstream/main  
+# git push origin main
+
+
+
+
+
+
+```
+
