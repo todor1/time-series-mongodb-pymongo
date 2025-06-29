@@ -180,6 +180,7 @@ uv lock
 
 ```bash
 docker compose up  
+docker compose up --watch  
 
 docker compose down  
 
@@ -191,27 +192,48 @@ docker compose down
 ```bash
 git remote -v
 
-# Remove the Original Remote
-
+# Remove the Original Remote (forked source)
 git remote remove origin
 
 # Add Your Fork as the New Remote
 git remote add origin https://github.com/todor1/time-series-mongodb-pymongo.git
-git remote add upstream https://github.com/todor1/time-series-mongodb-pymongo.git
+# git remote add upstream https://github.com/todor1/time-series-mongodb-pymongo.git
 
 # Push to Your Fork
+# Use -u to set the upstream so future pushes can be done with just git push.
 git push -u origin main
-
 
 # Then you can fetch and merge changes from the original repo like this:
 # git fetch upstream
 # git merge upstream/main  
 # git push origin main
 
-
-
-
-
-
 ```
 
+
+## Project First Steps  
+```bash
+python -i src/db_client.py
+
+client = get_db_client()
+
+# below should return the same id even if multiple client calls above
+id(client)
+
+data = {"hello":"world", "order":1}
+data = {"hello":"world", "order":2}
+data = {"hello":"world", "order":3}
+
+db = client.hello
+
+collection = db.world
+
+# not able to store the same pointer, but possible to store same data as another object
+collection.insert_one(data)
+
+list(collection.find())
+
+result = collection.insert_one(data)
+print(result.acknowledged)
+print(result.inserted_id)
+```
