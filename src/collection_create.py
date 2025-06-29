@@ -1,10 +1,8 @@
 # incomplete on purpose - check `final` branch
-
 from pymongo import errors
 
-
 # fix local imports
-# import db_client
+import db_client
 
 
 def create_ts(name="rating_over_time"):
@@ -12,10 +10,19 @@ def create_ts(name="rating_over_time"):
     Create a new time series collection
     """
     # 1. get a mongodb client
+    client = db_client.get_db_client()
     # 2. get a mongodb database
+    db = client.business
     try:
         # 3. create a collection
-        pass
+        db.create_collection(
+            name=name,
+            timeseries={
+                "timeField": "timestamp",
+                "metaField": "metadata",
+                "granularity": "seconds",
+            },
+        )
     except errors.CollectionInvalid as e:
         print(f"{e}. Continuing")
 

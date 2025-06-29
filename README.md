@@ -1,4 +1,20 @@
-# Time Series with Python & MongoDB
+# Udemy: MongoDB Database Developer Course In Python  
+<https://www.udemy.com/course/mongodb-database-developer-course-in-python/?couponCode=KEEPLEARNING>  
+
+# Udemy: Master MongoDB Development Applications  
+MongoDB with Python, MongoDB with Django, MongoDB with NodeJs, etc.  
+<https://www.udemy.com/course/mongodb-mastering-mongodb-for-beginners-theory-projects/learn/lecture/28067330#overview>  
+
+# Udemy: Complete MongoDB Administration Guide   
+Master MongoDB database using JavaScript Mongo Shell, Robo 3T (Robomongo) and MongoDB Compass 
+Bogdan Stashchuk 
+<https://www.udemy.com/course/mongodb-essentials-m/?couponCode=KEEPLEARNING>   
+
+
+
+
+
+# CFE: Time Series with Python & MongoDB
 
 Learn the fundamental techniques for analyzing time-series data with Python, MongoDB, PyMongo, Pandas, & Matplotlib
 
@@ -11,8 +27,12 @@ Learn the fundamental techniques for analyzing time-series data with Python, Mon
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) Installed (for local MongoDB instance)
 - Terminal or PowerShell experience
 
+<https://github.com/codingforentrepreneurs/time-series-mongodb-pymongo/tree/main>  
 
-## Getting Started
+<https://github.com/codingforentrepreneurs/time-series-mongodb-pymongo/tree/final>  
+
+
+## 1.Getting Started
 
 1. Make a project directory
 ```
@@ -97,11 +117,11 @@ pip install -r requirements.txt
 
 <https://blog.pecar.me/uv-with-django>
 
-### 1.Initialize project
+### 1.Initialize project  
 
 uv init .
 
-### 2.Create environment
+### 2.Create environment  
 
 ```bash
 uv venv --python 3.13
@@ -117,7 +137,6 @@ source .venv/bin/activate
 uv pip install . --link-mode=copy
 ```
 
-
 **NB: Check the .python-version file**
 Copilot 
 I have updated the .python-version file to specify version 3.13. 
@@ -127,7 +146,7 @@ With this change, uv should now create a virtual environment with Python 3.13 as
 You can now try running your command again:
 uv venv --python 3.13
 
-### 3.Activate environment
+### 3.Activate environment  
 ```bash
 win
 source .venv/Scripts/activate
@@ -139,7 +158,7 @@ linux/mac
 source .venv/bin/activate
 ```
 
-### 4.Install packages
+### 4.Install packages  
 
 ```bash
 uv pip install --upgrade pip
@@ -151,7 +170,7 @@ The quotes around the package specification are important to prevent shell inter
 uv pip install "Django>=5.2,<5.3"
 ```
 
-### 5.UV Workflow
+### 5.UV Workflow  
 ```bash
 uv init .
 uv init proj_name
@@ -211,7 +230,7 @@ git push -u origin main
 ```
 
 
-## Project First Steps  
+## 2.Project First Steps  
 ```bash
 python -i src/db_client.py
 
@@ -237,3 +256,267 @@ result = collection.insert_one(data)
 print(result.acknowledged)
 print(result.inserted_id)
 ```
+
+## 3.Check Data after Insert  
+
+```bash
+python -i src/db_client.py
+client = get_db_client()
+db = client.business
+collection = db.rating_over_time
+collection.find()
+len(list(collection.find()))
+```
+
+## 4.Aggregate Data  
+
+```bash
+python -i src/db_client.py
+client = get_db_client()
+db = client.business
+collection = db.rating_over_time
+collection.find()
+len(list(collection.find()))
+# list(collection.find())  -> prints multiple datasets
+
+# arbitrary cuisine arguments
+results = list(
+    collection.aggregate([
+        {
+        "$group": {
+            "_id": {"cuisine":"abc"},
+            }   
+        }])
+)
+print(len(results))
+print(results)
+
+list(collection.find())[0]
+
+results = list(
+    collection.aggregate([
+        {
+        "$group": {
+            "_id": {"cuisine":"$metadata"},
+            }   
+        }])
+)
+print(len(results))
+
+results = list(
+    collection.aggregate([
+        {
+        "$group": {
+            "_id": {"cuisine":"$metadata.cuisine"},
+            }   
+        }])
+)
+print(len(results))
+
+results = list(
+    collection.aggregate([
+        {
+        "$group": {
+            "_id": {"cuisine":"$metadata.cuisine"},
+            "count": {"$sum":1},
+            }   
+        }])
+)
+print(results)
+
+results = list(
+    collection.aggregate([
+        {
+        "$group": {
+            "_id": {"cuisine":"$metadata.cuisine"},
+            "count": {"$sum":1},
+            "average": {"$avg":"$rating"},
+            }   
+        }])
+)
+
+```
+
+## 5.Modifying Incoming Doc Data  
+
+```bash
+python -i src/db_client.py
+client = get_db_client()
+db = client.business
+collection = db.rating_over_time
+collection.find()
+len(list(collection.find()))
+##################################
+
+results = list(
+    collection.aggregate([
+        {
+            "$project": {
+                "date":{
+                    "$dateToString": {"format":"%Y-%m", "date": "$timestamp"}
+                }
+            }
+        }
+    ])
+)
+
+print(len(results))
+```
+
+## 6.Time Series Aggregations  
+
+```bash
+python -i src/db_client.py
+client = get_db_client()
+db = client.business
+collection = db.rating_over_time
+len(list(collection.find()))
+##################################
+
+results = list(
+    collection.aggregate([
+        {
+            "$project": {
+                "date":{
+                    "$dateToString": {"format":"%Y-%m", "date": "$timestamp"}
+                },
+                "cuisine": "$metadata.cuisine",
+                "rating": "$rating",
+                }
+        },
+        {
+            "$group": {               
+                "_id": { 
+                    "cuisine": "$cuisine",
+                    "date": "$date"},
+                "avg": {"$avg": "$rating"}
+            }
+        },
+        {"$addFields": {"cuisine": "$_id.cuisine"}},
+        {"$addFields": {"date": "$_id.date"}},
+    ])
+)
+
+print(len(results))
+```
+
+## 7.Match Filter & Sorting on Aggregations    
+
+### Sort  
+ - {"$sort": {"date": 1}} -> oldest to newest
+ - {"$sort": {"date": -1}} -> newest to oldest
+
+```python
+results = list(
+    collection.aggregate([
+        {
+            "$project": {
+                "date":{
+                    "$dateToString": {"format":"%Y-%m", "date": "$timestamp"}
+                },
+                "cuisine": "$metadata.cuisine",
+                "rating": "$rating",
+                }
+        },
+        {
+            "$group": {               
+                "_id": { 
+                    "cuisine": "$cuisine",
+                    "date": "$date"},
+                "avg": {"$avg": "$rating"}
+            }
+        },
+        {"$addFields": {"cuisine": "$_id.cuisine"}},
+        {"$addFields": {"date": "$_id.date"}},
+        {"$sort": {"date": 1}},
+    ])
+)
+
+results[:10]
+
+results[-10:] 
+
+```
+
+### Filter/Match
+
+Filter the whole object by dates before sorting and applying aggregations  
+
+```python
+import datetime 
+
+results = list(
+    collection.aggregate([
+        {
+            "$match": {
+                "timestamp": {
+                    "$gte": datetime.datetime.now() - datetime.timedelta(days=50), 
+                    "$lte": datetime.datetime.now()}
+            }
+        },
+        {
+            "$project": {
+                "date":{
+                    "$dateToString": {"format":"%Y-%m", "date": "$timestamp"}
+                },
+                "cuisine": "$metadata.cuisine",
+                "rating": "$rating",
+                }
+        },
+        {
+            "$group": {               
+                "_id": { 
+                    "cuisine": "$cuisine",
+                    "date": "$date"},
+                "avg": {"$avg": "$rating"}
+            }
+        },
+        {"$addFields": {"cuisine": "$_id.cuisine"}},
+        {"$addFields": {"date": "$_id.date"}},
+        {"$sort": {"date": -1}},
+    ])
+)
+
+results[:10]
+
+```
+
+## 8.Pandas & MongoDB  
+
+
+```python
+import pandas as pd
+
+dataset = list(
+    collection.aggregate([        
+        {
+            "$project": {
+                "date":{
+                    "$dateToString": {"format":"%Y-%m", "date": "$timestamp"}
+                },
+                "cuisine": "$metadata.cuisine",
+                "rating": "$rating",
+                }
+        },
+        {
+            "$group": {               
+                "_id": { 
+                    "cuisine": "$cuisine",
+                    "date": "$date"},
+                "average": {"$avg": "$rating"}
+            }
+        },
+        {"$addFields": {"cuisine": "$_id.cuisine"}},
+        {"$addFields": {"date": "$_id.date"}},
+        {"$sort": {"date": 1}},
+    ])
+)
+
+df = pd.DataFrame(dataset)
+df["date"] = pd.to_datetime(df["date"])
+df = df[["date", "cuisine", "average"]]
+df.set_index("date", inplace=True)
+df.head().round(2)
+```
+
+# TODO: Openmeteo API MongoDB  
