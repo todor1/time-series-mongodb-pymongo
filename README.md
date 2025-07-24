@@ -1475,10 +1475,13 @@ Finally, let's plot!
 ...
 
 python src/chart.py
-```
+```  
 
-In your project you should see a new folder plot/cuisines with some charts in it.
-Wrap up
-Nice work if you got this far! Time Series Data in MongoDB is incredibly compelling. The nice thing about a lot of the code above is we can use it within a web application (like FastAPI or Flask) with very little changes.
+In your project you should see a new folder plot/cuisines with some charts in it.  
+
+**Wrap up**  
+
+Nice work if you got this far! Time Series Data in MongoDB is incredibly compelling.  
+The nice thing about a lot of the code above is we can use it within a web application (like FastAPI or Flask) with very little changes.  
 MongoDB has a lot of promising features for a database that makes modern time series development such a joy. 
 
