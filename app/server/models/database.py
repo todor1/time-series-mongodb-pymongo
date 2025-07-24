@@ -1,8 +1,7 @@
 from beanie import init_beanie
 from decouple import config
 from motor import motor_asyncio
-
-from app.server.models.models import Device, DeviceData
+from server.models.models import Device, DeviceData
 
 
 async def init_db():

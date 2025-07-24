@@ -2,10 +2,9 @@ from datetime import datetime
 
 from beanie import PydanticObjectId
 from fastapi import APIRouter, HTTPException
+from server.models.models import Device, DeviceData, ReadingMetadata
+from server.models.schemas import DeviceReading
 from starlette import status
-
-from app.server.models.models import Device, DeviceData, ReadingMetadata
-from app.server.models.schemas import DeviceReading
 
 router = APIRouter(prefix="/device", tags=["Device"])
 

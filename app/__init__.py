@@ -1,1 +1,0 @@
-# FastAPI Beanie IoT Application

@@ -1,16 +1,21 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
+from server.models.database import init_db
+from server.routes.device import router as device_router
 
-from app.server.models.database import init_db
-from app.server.routes.device import router as device_router
 
-api_app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    await init_db()
+    yield
+    # Shutdown (if needed)
+
+
+api_app = FastAPI(lifespan=lifespan)
 
 api_app.include_router(device_router, tags=["Device"])
-
-
-@api_app.on_event("startup")
-async def start_db():
-    await init_db()
 
 
 @api_app.get("/", response_model=dict)

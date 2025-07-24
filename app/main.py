@@ -1,3 +1,4 @@
+# FastAPI Beanie IoT Application
 import uvicorn
 
 if __name__ == "__main__":
