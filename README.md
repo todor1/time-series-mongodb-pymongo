@@ -524,12 +524,44 @@ df.head().round(2)
 **Time Series with Python & MongoDB Guide**  
 <https://www.codingforentrepreneurs.com/blog/time-series-with-python-mongodb-guide>  
 
+## Git Workflow: Upload to New Branch  
 
+
+Here's the complete workflow for creating and uploading changes to a new branch:
+
+### 1. Check Current Branch
 ```bash
-git checkout -b 'blog-post'
 git branch --show-current
 git branch -v
-``` 
+```
+
+### 2. Create and Switch to New Branch
+```bash
+git checkout -b 'blog-post'
+```
+
+### 3. Stage All Changes
+```bash
+git add .
+```
+
+### 4. Commit Changes with Message
+```bash
+git commit -m "Add blog post content and project updates"
+```
+
+### 5. Push to Remote and Set Upstream
+```bash
+git push -u origin blog-post
+```
+
+The `-u` flag sets the upstream tracking, so future pushes from this branch can be done with just `git push`.
+
+### Alternative: Check Current Branch Only
+```bash
+# To see which branch is currently active
+git branch --show-current
+```
 
 ## Step 1: Create Project Directory  
 
@@ -996,40 +1028,3 @@ db.create_collection(
     )
 ```
 
-## Git Workflow: Upload to New Branch
-
-Here's the complete workflow for creating and uploading changes to a new branch:
-
-### 1. Check Current Branch
-```bash
-git branch --show-current
-git branch -v
-```
-
-### 2. Create and Switch to New Branch
-```bash
-git checkout -b 'blog-post'
-```
-
-### 3. Stage All Changes
-```bash
-git add .
-```
-
-### 4. Commit Changes with Message
-```bash
-git commit -m "Add blog post content and project updates"
-```
-
-### 5. Push to Remote and Set Upstream
-```bash
-git push -u origin blog-post
-```
-
-The `-u` flag sets the upstream tracking, so future pushes from this branch can be done with just `git push`.
-
-### Alternative: Check Current Branch Only
-```bash
-# To see which branch is currently active
-git branch --show-current
-```
