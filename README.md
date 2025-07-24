@@ -395,10 +395,10 @@ git add .
 
 ### 4. Commit Changes with Message
 ```bash
-git commit -m "Add blog post content and project updates"
+git commit -m "medium beanie start"
 ```
 
 ### 5. Push to Remote and Set Upstream
 ```bash
-git push -u origin blog-post
+git push -u origin medium-beanie
 ```
