@@ -12,6 +12,7 @@ Bogdan Stashchuk
 
 
 # TODO: Openmeteo API MongoDB  
+As a separate private repo  
 
 
 # CFE: Time Series with Python & MongoDB
@@ -1017,7 +1018,7 @@ Let's create a new collection that's designed for time series [docs](https://www
   
 We're going to add a new time series by using the create_collection method like this:  
 ```bash
-name = "my_collection_name"
+name = "tscollection"
 db.create_collection(
         name,
         timeseries= {
@@ -1027,4 +1028,457 @@ db.create_collection(
         }
     )
 ```
+
+Let's add it to our src folder.
+In src/collection_create.py add:
+
+```python
+
+from pymongo import errors
+
+import db_client # created above
+
+def create_ts(name='rating_over_time'):
+    """
+    Create a new time series collection
+    """
+    client = db_client.get_db_client()
+    db = client.business
+    try:
+        db.create_collection(
+               name,
+                timeseries= {
+                    "timeField": "timestamp",
+                    "metaField": "metadata",
+                    "granularity": "seconds"
+                }
+            )
+    except errors.CollectionInvalid as e:
+        print(f"{e}. Continuing")
+
+def drop(name='rating_over_time'):
+    """
+    Drop any given collection by name
+    """
+    client = db_client.get_db_client()
+    db = client.business
+    try:
+        db.drop_collection(name)
+    except errors.CollectionInvalid as e:
+        print(f"Collection error:\n {e}")
+        raise Exception("Cannot continue")
+
+```
+
+
+We now have convenient create_ts and drop methods that we'll use in the generate_data.py module create next.
+Let's breakdown what's happening in the create_ts function:
+ - db.create_collection is a command that allows us to create a collection. In this case, we are included the required parameters to create a time series collection.
+ - rating_over_time is simply the name of the collection.
+ - timeseries={} is the parameter we must add for time series data.
+     - timeField is the field name we'll set with a python datetime object
+     - metaField is we'll use this for unique identifies for this document that rarely (if ever) change. Examples we'll use are restaurant name and cuisine type.
+     - granularity options are "seconds", "minutes", or "hours". This is how the data will be stored (along with the timestamp). Ideally ou "choose the closest match to the time span between consecutive incoming measurements."
+     - errors.CollectionInvalid is the exception that will be raised if rating_over_time already exists. 
+
+Given this criteria, we'll have following formatted data document inserted into our collection at any given time.   
+The key to this is not change the field we have below. A few of them we assigned directly to parameters in timeseries={} above.
+
+```python
+data = {
+  "metadata": {
+    "name": "Some String",
+    "cuisine": "Another String"
+  },
+  "rating": 4.5,
+  "timestamp": datetime.datetime.now()
+}
+```
+
+Generate Random Data Now that we can create a time-series collection, let's build a module that will generate random data for us. This data will be generated randomly (really pseudo-random via the random package) by the functionality below.
+In src/generate_data.py let's add the following:
+
+```python
+import datetime
+import random
+import sys
+
+import collection_create
+import db_client
+
+
+
+name_choices =  ["Big", "Goat", "Chicken", "Tasty", "Salty", "Fire", "Forest", "Moon", "State", "Texas", "Bear", "California"]
+cuisine_choices = ["Pizza", "Bar Food", "Fast Food", "Pasta","Tacos", "Sushi", "Vegetarian", "Steak", "Burgers"]
+
+
+def get_random_name():
+    _name_start = random.choice(name_choices)
+    _name_end = random.choice(name_choices)
+    return f"{_name_start} {_name_end}"
+
+def get_random_cuisine():
+    selected_cuisine = random.choice(cuisine_choices)
+    return selected_cuisine
+  
+def get_random_rating(skew_low=True):
+    part_a = list([random.randint(1, 3) for i in range(10)])
+    part_b = list([random.randint(3, 4) for i in range(10)])
+    if not skew_low:
+      part_c = list([random.randint(4, 5) for i in range(25)])
+    else:
+      part_c = list([random.randint(4, 5) for i in range(5)])
+    _ratings =  part_a + part_b +  part_c
+    return random.choice(_ratings)
+
+def get_random_timestamp():
+    now = datetime.datetime.now()
+    delta = now - datetime.timedelta(days=random.randint(0, 5_000), minutes=random.randint(0, 60), seconds=random.randint(0, 60))
+    return delta
+
+def get_or_generate_collection(name="rating_over_time"):
+    client = db_client.get_db_client()
+    db = client.business
+    collection_create.create(name=name)
+    collection = db[name]
+    return collection
+
+def run(collection, iterations=50, skew_results=True):
+    completed = 0
+    for n in range(0, iterations):
+        timestamp = get_random_timestamp()
+        name = get_random_name()
+        cuisine = get_random_cuisine()
+        rating = get_random_rating(skew_low=True)
+        if skew_results:
+          if cuisine.lower() == "mexican":
+              rating = random.choice([4, 5])
+          elif cuisine.lower() == "bar food":
+              rating = random.choice([1, 2])
+          elif cuisine.lower() == "sushi":
+              rating = get_random_rating(skew_low=False)              
+        data = {
+          "metadata": {
+            "name": name,
+            "cuisine": cuisine
+          },
+          "rating": rating,
+          "timestamp": timestamp
+        }
+        result = collection.insert_one(data)
+        if result.acknowledged:
+            completed += 1
+        if n > 0 and n % 1000 == 0:
+            print(f"Finished {n} of {iterations} items.")
+    print(f"Added {completed} items.")
+
+
+if __name__ == "__main__":
+    iterations = 50
+    name="rating_over_time"
+    try:
+        iterations = int(sys.argv[1])
+    except:
+        pass
+    try:
+        name= sys.argv[2]
+    except:
+        pass
+    collection = get_or_generate_collection(name="rating_over_time")
+    run(collection, iterations=iterations)
+
+```
+
+Now let's generate some data. First we'll start off with 100 items:
+```bash
+python generate_data.py 100
+python generate_data.py 1_000
+python generate_data.py 100_000
+```
+
+This might take awhile but it's a good idea to have a diverse dataset in our collection. It's not actually diverse because the data is simulated but it will, hopefully, show us some interesting patterns in the data.
+Now you might be wondering about this block:  
+
+```python
+if skew_results:
+  if cuisine.lower() == "mexican":
+      rating = random.choice([4, 5])
+  elif cuisine.lower() == "bar food":
+      rating = random.choice([1, 2])
+  elif cuisine.lower() == "sushi":
+      rating = get_random_rating(skew_low=False)
+
+```
+Using pseudo-random data generators like we did in this example will, after enough data, likely skew all of our data points to be roughly the same. Having this block allows us to skew the results a little more in the way we might like. Feel free to play around with this as you'd like going forward. The next step will show you how to review the time series results to see why this skew might be necessary.  
+
+
+## Step 7. Time Series Aggregation Pipeline  
+
+Now we're going to aggregate our time series data. This entire blog post is really about this step.
+Let's have a look.
+
+**Aggregation Pipeline Basics**  
+First and foremost, we need to see how we can actually aggregate data using PyMongo and MongoDB.
+I recommend using the Python Shell and/or Jupyter notebooks for this step.
+
+```bash
+python shell  
+
+import db_client
+
+client = db_client.get_db_client()
+db = client.business
+collection = db["rating_over_time"]
+print(collection.find_one())
+
+```
+
+We can refer to each field as follows:
+ - timestamp
+ - metadata
+ - metadata.cuisine: this is mapped to the cuisine field within the metadata dictionary/object
+ - metadata.name: this is mapped to the name field field within the metadata dictionary/object
+ - _id: Document Object Id
+ - rating: Integer value of this particular time series entry  
+
+It's important to note each field because one of the first steps in aggregation is to group these items in some way. 
+
+I want to get the average rating for a restaurant. With this data, I am assuming that metadata.name and metadata.cuisine are unique together. In other words, a restaurant with the same name but different cuisine will be treated as a different business all together.  
+
+Here's how we can aggregate this data: 
+
+```bash
+results = list(collection.aggregate([
+  {"$group": {
+   "_id": {"name": "$metadata.name", "cuisine": "$metadata.cuisine"},
+    "count": {"$sum": 1},
+    "currentAvg": {"$avg": "$rating"},
+  }}
+]))
+
+print(results[0])
+{'_id': {'name': 'Fire Tasty', 'cuisine': 'Steak'}, 'count': 182, 'currentAvg': 2.9615384615384617}
+
+print(len(results))
+
+```
+
+So we see a few things here that are important.
+collection.aggregate initializes a pipeline and takes a list [] as an argument. This list allows us to perform various operations on the data based on it's position in the list (more on this later).
+{"$group": {}} denotes how we're going to group this data including group-related operations.
+_id we must declare an _id for this group as this _id is how MongoDB will roll this data up.
+{"name": "$metadata.name", "cuisine": "$metadata.cuisine"}:
+In this case, we referencing two of the original fields from the collection (metadata.name and metadata.cuisine). To reference data from the collection we must use the format $fieldName.withDot.Notation; the dollar sign $ must proceed the field name. If you do not have a dollar sign, MongoDB will automatically set the field to whatever string you write.
+The new fields name and cuisine are arbitrary. You can name them business and food_type if you like. The results will be the same just with different field names
+These two fields combine to make a unique combination for this aggregation. This unique combo will be responsible for how the data is aggregated and how operations occur on the data. In practice, the restaurant would probably have 2 other unique ids that we would consider adding to the metadata dictionary: location_id and business_id. I did not included these other fields for simplicity.
+"count": {"$sum": 1}. The field count here is an arbitrary name once again but it makes sense for what data we're looking to exact. I want to know the total sum of records that match the _id we generated for this group. In other words, how many documents do we have that contain the same metadata.name and metadata.cuisine? The {"$sum": 1} operator handles this for us.
+"currentAvg": {"$avg": "$rating"}. Again, the currentAvg name is arbitrary. The important part is {"$avg": "$rating"}. In this case, we're using the $avg operator but on the field $rating. MongoDB will calculate the average rating for this entire group based the new group _id as well as the average field.
+What if we wanted to round the currentAvg to 2 decimal places?
+Here's what our aggregation would look like:
+
+```bash
+results = list(collection.aggregate([
+  {"$group": {
+   "_id": {"name": "$metadata.name", "cuisine": "$metadata.cuisine"},
+    "count": {"$sum": 1},
+    "currentAvg": {"$avg": "$rating"},
+  }},
+  {"$addFields": {"roundedAverage": {"$round": [ "$currentAvg", 2]}}}
+]))
+```
+
+The changes are as follows:
+- {"$addFields": {}} is a new item in the collection.aggregate list. The roundedAverage field will be added after the first step is complete (ie the $group step). This is important so we can use the results of the first step.
+- {"roundedAverage": {}}: roundedAverage is the new field that we're adding to our aggregation. This addition will be handled on a smaller set of data since step 1 already occurred.
+- {"$round": [ "$currentAvg", 2]} The $round operator takes a list as argument [] that includes two main pieces: the field, and the decimal to round to. In our case we choose the $currentAvg field form the previous step in the aggregation until 2 decimal places.  
+
+To clean the data up one more time, we'll remove the field currentAverage since it contains too many decimal places.  
+
+```bash
+results = list(collection.aggregate([
+  {"$group": {
+   "_id": {"name": "$metadata.name", "cuisine": "$metadata.cuisine"},
+    "count": {"$sum": 1},
+    "currentAvg": {"$avg": "$rating"},
+  }},
+  {"$addFields": {"roundedAverage": {"$round": [ "$currentAvg", 2]}}},
+  { "$replaceWith": {
+    "$unsetField": {
+       "field": "currentAvg",
+       "input": "$$ROOT"
+   } } },
+]))
+```
+
+As we see:
+```bash
+  { "$replaceWith": {
+    "$unsetField": {
+       "field": "currentAvg",
+       "input": "$$ROOT"
+   } } },
+```
+Is the method for removing any field from the pervious step(s). In this case, currentAvg was the field that was removed.
+If review any given result we should see something like:
+```bash
+{'_id': {'name': 'Fire Tasty', 'cuisine': 'Steak'}, 'count': 211, 'roundedAverage': 2.95}
+```
+
+Now this is pretty cool. But this is standard MongoDB aggregation. It's not time series aggregation. Let's have a look on how to do that.  
+
+### The Time Series Aggregation Pipeline  
+
+Time Series data helps us understand changes over time. We could do days, months, weeks, years, hours, minutes, and even seconds. Anything smaller than seconds is a bit too far outside the scope of this blog post.
+I'm going to use month and year for the time series portion our aggregation. In simple terms, grouping the data by month and year, performing averages, and eventually plotting those averages.
+Now let's remember a key thing from the last aggregation we did: $group and _id. We have to generate an compelling _id that includes our time series data. But how to do that? Do we want our data group with anything other than time series data? Perhaps cuisine type? Perhaps business name? Perhaps all of that?
+The first step we need to do is enrich our dataset with a group-friendly date string because the timestamp field is not a date field. Let's change that.
+To enrich an aggregation prior to grouping the data, we can use the $project operator. Like this: 
+
+```bash
+results = list(collection.aggregate([
+  {"$project": {
+    "date": { 
+        "$dateToString": { "format": "%Y-%m", "date": "$timestamp" } 
+    },
+  }}
+]))
+print(results[:1])
+```
+
+This will yield something like:
+[{'_id': ObjectId('62f2b8bc6672d1f1e9742914'), 'date': '2022-08'}]
+
+As we see $project actually modified the incoming data. Let's modify it so it contains the relevant details we need: cuisine and rating.
+
+```bash
+results = list(collection.aggregate([
+  {"$project": {
+    "date": { 
+        "$dateToString": { "format": "%Y-%m", "date": "$timestamp" } 
+    },
+    "cuisine": "$metadata.cuisine",
+    "rating": "$rating",
+  }}
+]))
+print(results[:1])
+
+```
+
+At this point we learned a few things:
+Using $project can help enrich our data and elminate data we don't need
+"$dateToString": { "format": "%Y-%m", "date": "$timestamp" } shows us how to convert our timestamp field $timestamp into the format date format %Y-%m which yields '2008-11'
+Both cuisine and rating reference data from the original collection
+
+Now let's create a group:
+
+```bash
+results = list(collection.aggregate([
+  {"$project": {
+    "date": { 
+        "$dateToString": { "format": "%Y-%m", "date": "$timestamp" } 
+    },
+    "cuisine": "$metadata.cuisine",
+    "rating": "$rating",
+  }},
+  { 
+      "$group": {
+        "_id": {
+            "cuisine": "$cuisine",
+            "date": "$date",
+        },
+        "average": { "$avg": "$rating" },
+      }
+     }
+]))
+print(results[:1])
+```
+
+This is so close to how I want it. I'm going to add 2 new fields to make plotting our results easier.
+
+```bash
+results = list(collection.aggregate([
+  {"$project": {
+    "date": { 
+        "$dateToString": { "format": "%Y-%m", "date": "$timestamp" } 
+    },
+    "cuisine": "$metadata.cuisine",
+    "rating": "$rating",
+  }},
+  { 
+      "$group": {
+        "_id": {
+            "cuisine": "$cuisine",
+            "date": "$date",
+        },
+        "average": { "$avg": "$rating" },
+      }
+     },
+     {"$addFields": {"cuisine": "$_id.cuisine" }},
+     {"$addFields": {"date": "$_id.date" }}
+]))
+print(results[:1])
+```
+
+An alternative method to adding these fields would be to do:
+
+```bash
+results = list(collection.aggregate([
+  {"$project": {
+    "date": { 
+        "$dateToString": { "format": "%Y-%m", "date": "$timestamp" } 
+    },
+    "cuisine": "$metadata.cuisine",
+    "rating": "$rating",
+  }},
+  { 
+      "$group": {
+        "_id": {
+            "cuisine": "$cuisine",
+            "date": "$date",
+        },
+        "average": { "$avg": "$rating" },
+        "cuisine": { "$first": "$cuisine" }, 
+        "date": { "$first": "$date" },
+      }
+     },
+]))
+print(results[:1])
+
+```
+
+Both { "$first": "$cuisine" } and { "$first": "$date" } will get the first instance in the list of items that feed into this group. We could actually grab any instance simply because the data is being grouped by these same fields. The previous method is preferred in my opinion.
+Plotting PyMongo & MongoDB Time Series with Python Pandas
+Earlier in this post, we installed pandas. The only reason to install this was to simply turn our time series aggregation pipeline into a plotted chart.  
+
+It's pretty simple.
+First, we need to use pandas:
+```bash
+import pandas as pd
+df = pd.DataFrame(results)
+df = df[['date', 'cuisine', 'average']]
+df['date'] = pd.to_datetime(df['date'])
+df.set_index('date', inplace=True)
+start_date = '2023-01-01'
+end_date = '2025-12-31'
+time_series_data =  df.loc[start_date:end_date].groupby('cuisine')['average']
+```
+
+You can play around with the start_date and end_date as you see fit. You can also omit the entire .loc[start_date:end_date] all together if you just want all the data from the pipeline. I recommend leveraging the pymongo pipeline more than pandas since MongoDB will most likely be much more efficient than pandas for this data. Either way, it's good to experiment with both! 
+
+Finally, let's plot! 
+
+```bash
+# time_series_data.plot(legend=True)
+# plot_series = time_series_data.plot(legend=True)
+# plot_figure = plot_series[0].get_figure()
+# plot_figure.savefig("output.png")
+...
+
+python src/chart.py
+```
+
+In your project you should see a new folder plot/cuisines with some charts in it.
+Wrap up
+Nice work if you got this far! Time Series Data in MongoDB is incredibly compelling. The nice thing about a lot of the code above is we can use it within a web application (like FastAPI or Flask) with very little changes.
+MongoDB has a lot of promising features for a database that makes modern time series development such a joy. 
 
