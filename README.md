@@ -1263,16 +1263,24 @@ print(len(results))
 
 ```
 
-So we see a few things here that are important.
-collection.aggregate initializes a pipeline and takes a list [] as an argument. This list allows us to perform various operations on the data based on it's position in the list (more on this later).
-{"$group": {}} denotes how we're going to group this data including group-related operations.
-_id we must declare an _id for this group as this _id is how MongoDB will roll this data up.
-{"name": "$metadata.name", "cuisine": "$metadata.cuisine"}:
-In this case, we referencing two of the original fields from the collection (metadata.name and metadata.cuisine). To reference data from the collection we must use the format $fieldName.withDot.Notation; the dollar sign $ must proceed the field name. If you do not have a dollar sign, MongoDB will automatically set the field to whatever string you write.
-The new fields name and cuisine are arbitrary. You can name them business and food_type if you like. The results will be the same just with different field names
-These two fields combine to make a unique combination for this aggregation. This unique combo will be responsible for how the data is aggregated and how operations occur on the data. In practice, the restaurant would probably have 2 other unique ids that we would consider adding to the metadata dictionary: location_id and business_id. I did not included these other fields for simplicity.
-"count": {"$sum": 1}. The field count here is an arbitrary name once again but it makes sense for what data we're looking to exact. I want to know the total sum of records that match the _id we generated for this group. In other words, how many documents do we have that contain the same metadata.name and metadata.cuisine? The {"$sum": 1} operator handles this for us.
-"currentAvg": {"$avg": "$rating"}. Again, the currentAvg name is arbitrary. The important part is {"$avg": "$rating"}. In this case, we're using the $avg operator but on the field $rating. MongoDB will calculate the average rating for this entire group based the new group _id as well as the average field.
+So we see a few things here that are important.  
+ - collection.aggregate initializes a pipeline and takes a list [] as an argument. This list allows us to perform various operations on the data based on it's position in the list (more on this later).
+ - {"$group": {}} denotes how we're going to group this data including group-related operations.
+ - _id we must declare an _id for this group as this _id is how MongoDB will roll this data up.
+ - {"name": "$metadata.name", "cuisine": "$metadata.cuisine"}:  
+- 
+In this case, we referencing two of the original fields from the collection (metadata.name and metadata.cuisine). To reference data from the collection we must use the format $fieldName.withDot.Notation; the dollar sign $ must proceed the field name. If you do not have a dollar sign, MongoDB will automatically set the field to whatever string you write.  
+
+The new fields name and cuisine are arbitrary.  You can name them business and food_type if you like. The results will be the same just with different field names  
+
+These two fields combine to make a unique combination for this aggregation.   
+This unique combo will be responsible for how the data is aggregated and how operations occur on the data.  
+In practice, the restaurant would probably have 2 other unique ids that we would consider adding to the metadata dictionary: location_id and business_id. I did not included these other fields for simplicity.
+- "count": {"$sum": 1}. The field count here is an arbitrary name once again but it makes sense for what data we're looking to exact. I want to know the total sum of records that match the _id we generated for this group. In other words, how many documents do we have that contain the same metadata.name and metadata.cuisine? - The {"$sum": 1} operator handles this for us.
+- "currentAvg": {"$avg": "$rating"}. Again, the currentAvg name is arbitrary.   
+- The important part is {"$avg": "$rating"}. In this case, we're using the $avg operator but on the field $rating.   
+- MongoDB will calculate the average rating for this entire group based the new group _id as well as the average field. 
+
 What if we wanted to round the currentAvg to 2 decimal places?
 Here's what our aggregation would look like:
 
@@ -1328,9 +1336,12 @@ Now this is pretty cool. But this is standard MongoDB aggregation. It's not time
 
 ### The Time Series Aggregation Pipeline  
 
-Time Series data helps us understand changes over time. We could do days, months, weeks, years, hours, minutes, and even seconds. Anything smaller than seconds is a bit too far outside the scope of this blog post.
-I'm going to use month and year for the time series portion our aggregation. In simple terms, grouping the data by month and year, performing averages, and eventually plotting those averages.
-Now let's remember a key thing from the last aggregation we did: $group and _id. We have to generate an compelling _id that includes our time series data. But how to do that? Do we want our data group with anything other than time series data? Perhaps cuisine type? Perhaps business name? Perhaps all of that?
+Time Series data helps us understand changes over time. We could do days, months, weeks, years, hours, minutes, and even seconds. Anything smaller than seconds is a bit too far outside the scope of this blog post.  
+
+I'm going to use month and year for the time series portion our aggregation. In simple terms, grouping the data by month and year, performing averages, and eventually plotting those averages.  
+
+Now let's remember a key thing from the last aggregation we did: $group and _id. We have to generate an compelling _id that includes our time series data. But how to do that?   
+Do we want our data group with anything other than time series data? Perhaps cuisine type? Perhaps business name? Perhaps all of that?
 The first step we need to do is enrich our dataset with a group-friendly date string because the timestamp field is not a date field. Let's change that.
 To enrich an aggregation prior to grouping the data, we can use the $project operator. Like this: 
 
@@ -1446,8 +1457,9 @@ print(results[:1])
 
 ```
 
-Both { "$first": "$cuisine" } and { "$first": "$date" } will get the first instance in the list of items that feed into this group. We could actually grab any instance simply because the data is being grouped by these same fields. The previous method is preferred in my opinion.
-Plotting PyMongo & MongoDB Time Series with Python Pandas
+Both { "$first": "$cuisine" } and { "$first": "$date" } will get the first instance in the list of items that feed into this group. We could actually grab any instance simply because the data is being grouped by these same fields. The previous method is preferred in my opinion.  
+
+**Plotting PyMongo & MongoDB Time Series with Python Pandas**
 Earlier in this post, we installed pandas. The only reason to install this was to simply turn our time series aggregation pipeline into a plotted chart.  
 
 It's pretty simple.
