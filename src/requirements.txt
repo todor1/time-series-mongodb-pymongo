@@ -1,5 +1,0 @@
-pymongo
-python-decouple
-pandas
-matplotlib
-jupyter

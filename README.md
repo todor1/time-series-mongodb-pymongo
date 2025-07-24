@@ -1,529 +1,376 @@
-# Udemy: MongoDB Database Developer Course In Python  
-<https://www.udemy.com/course/mongodb-database-developer-course-in-python/?couponCode=KEEPLEARNING>  
+# Time Series with FastAPI and Beanie, or How to Handle Multiple Data Types and Not Go Crazy
 
-# Udemy: Master MongoDB Development Applications  
-MongoDB with Python, MongoDB with Django, MongoDB with NodeJs, etc.  
-<https://www.udemy.com/course/mongodb-mastering-mongodb-for-beginners-theory-projects/learn/lecture/28067330#overview>  
+**By Jorge B. Aspiazu**  
+**Published: July 23, 2024**  
+**Read time: 10 min**
 
-# Udemy: Complete MongoDB Administration Guide   
-Master MongoDB database using JavaScript Mongo Shell, Robo 3T (Robomongo) and MongoDB Compass 
-Bogdan Stashchuk 
-<https://www.udemy.com/course/mongodb-essentials-m/?couponCode=KEEPLEARNING>   
+**Original Article:** <https://medium.com/@jobenas_25464/time-series-with-fastapi-and-beanie-or-how-to-handle-multiple-data-types-and-not-go-crazy-05911237af5e>
 
+---
 
-# TODO: Openmeteo API MongoDB  
-As a separate private repo  
+**Author's note:** This is the second part of a series on IoT Cloud with MongoDB and other relevant technologies. For the first part of the series on how to set up MongoDB on a docker environment, you can go [here](https://medium.com/@jobenas_25464/deploying-mongodb-on-docker-for-iot-applications-d7ded714c5a3). For the version of this article in Spanish, you can go [here](https://medium.com/@jobenas_25464/gesti%C3%B3n-de-datos-de-sensores-iot-con-fastapi-y-beanie-c%C3%B3mo-manejar-m%C3%BAltiples-tipos-de-datos-sin-965ba8164a7b).
 
+Managing different types of sensor data can be a real challenge, especially when using relational databases, which are the go-to choice for many cloud and web applications. However, MongoDB shines in this area because of its ability to store unstructured data. This flexibility allows us to store various types of data without the need to define table structures in advance.
 
-# CFE: Time Series with Python & MongoDB
+When building a cloud solution, it's crucial that the database integrates smoothly with the web framework. Since I'm comfortable with Python, FastAPI is my preferred choice. Typically, in relational databases, we use an ORM like SQLAlchemy to interact with the database. For MongoDB, we need a similar tool to maintain flexibility and ease of use. This is where Beanie comes in.
 
-Learn the fundamental techniques for analyzing time-series data with Python, MongoDB, PyMongo, Pandas, & Matplotlib
+In this post, I'll walk you through creating a simple HTTP RESTful API app that handles sensor data by inserting it into a MongoDB database and retrieving it as needed. Handling sensor data in a NoSQL database like MongoDB can be tricky since it's often time series data — data that's ordered in a sequence, usually by time. Our application will need to manage this effectively.
 
-*References*
-- Blog post *(coming soon)*
-- Video *(coming soon)* 
+Before diving into the implementation, let's explore why we've chosen these specific technologies.
 
-*Prerequisites*
-- Python 3.8+ Installed
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) Installed (for local MongoDB instance)
-- Terminal or PowerShell experience
+## Why FastAPI and Beanie?
 
-<https://github.com/codingforentrepreneurs/time-series-mongodb-pymongo/tree/main>  
+Before diving into the implementation, let's discuss why we chose FastAPI and Beanie for this IoT cloud application.
 
-<https://github.com/codingforentrepreneurs/time-series-mongodb-pymongo/tree/final>  
+### FastAPI
 
+1. **Speed and Performance:** FastAPI is built on top of Starlette for the web parts and Pydantic for the data parts. It's designed to be fast and efficient, making it ideal for handling numerous concurrent requests typical in IoT applications.
 
-## 1.Getting Started
+2. **Ease of Use:** FastAPI's intuitive syntax and automatic generation of interactive API documentation (Swagger UI) make it very developer-friendly. This significantly speeds up the development process.
 
-1. Make a project directory
+3. **Asynchronous Capabilities:** IoT applications often require handling real-time data. FastAPI's asynchronous capabilities allow it to handle many requests simultaneously, which is crucial for such applications.
+
+### Beanie
+
+1. **ODM for MongoDB:** Beanie simplifies interactions with MongoDB by providing an Object Document Mapper, similar to how an ORM works for SQL databases. This makes it easier to manage and query IoT data.
+
+2. **Schema Validation:** Built on Pydantic, Beanie provides robust schema validation and data serialization. This ensures that the data being stored and retrieved is accurate and adheres to the defined schema.
+
+3. **Integration with FastAPI:** Beanie integrates seamlessly with FastAPI, allowing for a cohesive and efficient development experience.
+
+### MongoDB
+
+1. **Flexible Schema:** IoT data can vary greatly in structure. MongoDB's flexible schema allows for efficient storage and retrieval of diverse data types without predefined schemas.
+
+2. **Scalability:** MongoDB is designed to handle large volumes of data and can be scaled horizontally, making it suitable for IoT applications that generate a lot of data.
+
+3. **Time Series Data:** MongoDB's time series collections provide optimizations for storing and querying time series data, which is ideal for IoT sensor data.
+
+## Understanding Time Series Data and Its Challenges
+
+### What is Time Series Data?
+
+Time series data consists of data points indexed in time order. This type of data is crucial for tracking changes over time, making it essential for applications that monitor systems, performance, or other metrics. Examples include stock prices, weather data, and IoT sensor readings.
+
+### Why IoT Sensor Data Fits into Time Series Data
+
+IoT sensors continuously generate data points at regular intervals, creating a sequential flow of information. Each data point typically includes a timestamp and one or more readings (e.g., temperature, humidity). This temporal nature categorizes IoT sensor data as time series data. The need to store, query, and analyze this data efficiently is critical for extracting meaningful insights and responding to real-time events.
+
+### Challenges of Handling Time Series Data in MongoDB
+
+While MongoDB is versatile and excellent for unstructured data, managing time series data presents unique challenges:
+
+1. **Volume and Velocity:** IoT sensors can generate vast amounts of data rapidly. MongoDB needs to handle high write loads efficiently.
+
+2. **Query Performance:** Retrieving specific time ranges or aggregating data over time can be slower in MongoDB compared to specialized time series databases.
+
+3. **Schema Flexibility:** Although MongoDB's flexible schema is beneficial, it can become cumbersome when dealing with highly structured time series data that requires precise indexing and querying.
+
+### Benefits of Using MongoDB Over Specialized Time Series Databases
+
+Despite these challenges, MongoDB offers several advantages for IoT applications over specialized time series databases like InfluxDB:
+
+1. **Flexibility:** MongoDB's schema-less design allows for easy adjustments as the structure of the sensor data evolves.
+
+2. **Unified Data Store:** MongoDB can store various types of data (not just time series) within the same database, providing a unified solution for applications requiring multiple data types.
+
+3. **Robust Ecosystem:** MongoDB has a mature ecosystem with extensive tooling, libraries, and community support, making it easier to integrate with existing applications and services.
+
+4. **Scalability:** MongoDB is designed for horizontal scalability, which is crucial for handling the increasing volume of IoT data.
+
+5. **Aggregation Framework:** MongoDB's powerful aggregation framework allows for complex data processing and analysis within the database.
+
+While specialized time series databases like InfluxDB are optimized for storing and querying time series data, MongoDB's flexibility, unified data storage capabilities, robust ecosystem, and scalability make it a strong candidate for IoT applications. These features allow developers to handle time series data efficiently while also managing other types of data within the same database.
+
+In the next sections, we'll dive into how to set up FastAPI with Beanie to handle IoT sensor data, taking full advantage of MongoDB's capabilities to manage time series data effectively.
+
+## Project and Prerequisites
+
+This project will handle the creation of devices, as well as readings for these devices. Also the app will be able to retrieve individual devices, as well as list of them, while also being able to retrieve a list of sensor data that is restricted by timestamp range.
+
+Before we dive in, make sure you have the following installed:
+
+• Python 3.10+  
+• FastAPI  
+• MongoDB  
+• Beanie  
+
+### Project Structure
+
+Here's a brief overview of our project structure:
+
 ```
-mkdir -p ~/dev/ts-pymongo
-cd ~/dev/ts-pymongo
-```
-2. Clone this repo:
-
-```
-git clone https://github.com/codingforentrepreneurs/time-series-mongodb-pymongo .
-```
-
-3. Make and activate a virtual environment:
-
-
-```
-python3.10 -m venv venv
-```
-
-
-*macOS/Linux activation*
-```
-source venv/bin/activate
+app/
+├── __init__.py
+├── main.py
+├── server/
+│   ├── __init__.py
+│   ├── api_app.py
+│   ├── models/
+│   │   ├── __init__.py
+│   │   ├── database.py
+│   │   ├── models.py
+│   │   ├── schemas.py
+│   ├── routes/
+│   │   ├── __init__.py
+│   │   ├── device.py
+│   ├── utils/
+│       ├── pydantic_encoder.py
 ```
 
-*Windows activation*
-```
-./venv/Scripts/activate
-```
+## Setting Up the Environment
 
-4. Upgrade Virtual Environment Pip
-```
-(venv) python -m pip install pip --upgrade
-```
-
-5. Move `src/example.env` to `src/.env`
-```
-mv src/example.env src/.env
-```
-
-6. Change `MONGO_INITDB_ROOT_PASSWORD` in `.env`
-Create a new password with:
-
-```
-(venv) python -c "import secrets;print(secrets.token_urlsafe(32))"
-```
-
-So `.env` looks like:
-
-```
-MONGO_INITDB_ROOT_USERNAME="root"
-MONGO_INITDB_ROOT_PASSWORD="wlke0lL-v7FkGFn5Cl0brfxHJqhDPImBmg-MRfCIXx4" 
-```
-
-7. Install requirements
-
-```
-(venv) python -m pip install -r src/requirements.txt
-```
-
-8. Run Docker Compose
-Don't have docker? Install [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-
-```
-cd ~/dev/ts-pymongo
-docker compose up
-```
-
-
-9. Checkout the Final Results
-If you want to see the final code changes, checkout the `final` branch.
-```
-git checkout final
-```
-
-## 1 UV Python Project Setup   
+Let's start by setting up our environment. Install the required packages using pip:
 
 ```bash
-python.exe -m pip install --upgrade pip  
-pip install -r requirements.txt 
+pip install fastapi beanie motor
 ```
 
-<https://blog.pecar.me/uv-with-django>
+## Connecting to MongoDB
 
-### 1.Initialize project  
-
-uv init .
-
-### 2.Create environment  
-
-```bash
-uv venv --python 3.13
-uv venv envname
-uv venv envname --python 3.12
-```  
-
-if toml file available/linux: 
-```bash
-uv venv
-source .venv/Scripts/Activate
-source .venv/bin/activate
-uv pip install . --link-mode=copy
-```
-
-**NB: Check the .python-version file**
-Copilot 
-I have updated the .python-version file to specify version 3.13. 
-The uv command was likely prioritizing the version specified in that file over the one provided in the command-line arguments. 
-With this change, uv should now create a virtual environment with Python 3.13 as intended.
-
-You can now try running your command again:
-uv venv --python 3.13
-
-### 3.Activate environment  
-```bash
-win
-source .venv/Scripts/activate
-source env/Scripts/activate
-```
-
-linux/mac
-```bash
-source .venv/bin/activate
-```
-
-### 4.Install packages  
-
-```bash
-uv pip install --upgrade pip
-uv pip install -r requirements.txt
-```
-
-The quotes around the package specification are important to prevent shell interpretation of the ">" characters
-```bash
-uv pip install "Django>=5.2,<5.3"
-```
-
-### 5.UV Workflow  
-```bash
-uv init .
-uv init proj_name
-cd proj_name
-uv venv --python 3.12
-source .venv/Scripts/activate
-uv pip install --upgrade pip
-uv pip install -r requirements.txt
-```
-
-### 6 UV Migrating from Requirements  
-
-Save dependencies to pyproject.toml:
-
-```bash
-uv init .
-uv init proj_name
-cd proj_name
-uv venv --python 3.12
-source .venv/Scripts/activate
-uv add -r requirements.txt
-uv lock
-```
-
-### 7 Docker Start   
-
-```bash
-docker compose up  
-docker compose up --watch  
-
-docker compose down  
-
-# docker compose down -v
-```
-
-### 8 Git  
-
-```bash
-git remote -v
-
-# Remove the Original Remote (forked source)
-git remote remove origin
-
-# Add Your Fork as the New Remote
-git remote add origin https://github.com/todor1/time-series-mongodb-pymongo.git
-# git remote add upstream https://github.com/todor1/time-series-mongodb-pymongo.git
-
-# Push to Your Fork
-# Use -u to set the upstream so future pushes can be done with just git push.
-git push -u origin main
-
-# Then you can fetch and merge changes from the original repo like this:
-# git fetch upstream
-# git merge upstream/main  
-# git push origin main
-
-```
-
-
-## 2.Project First Steps  
-```bash
-python -i src/db_client.py
-
-client = get_db_client()
-
-# below should return the same id even if multiple client calls above
-id(client)
-
-data = {"hello":"world", "order":1}
-data = {"hello":"world", "order":2}
-data = {"hello":"world", "order":3}
-
-db = client.hello
-
-collection = db.world
-
-# not able to store the same pointer, but possible to store same data as another object
-collection.insert_one(data)
-
-list(collection.find())
-
-result = collection.insert_one(data)
-print(result.acknowledged)
-print(result.inserted_id)
-```
-
-## 3.Check Data after Insert  
-
-```bash
-python -i src/db_client.py
-client = get_db_client()
-db = client.business
-collection = db.rating_over_time
-collection.find()
-len(list(collection.find()))
-```
-
-## 4.Aggregate Data  
-
-```bash
-python -i src/db_client.py
-client = get_db_client()
-db = client.business
-collection = db.rating_over_time
-collection.find()
-len(list(collection.find()))
-# list(collection.find())  -> prints multiple datasets
-
-# arbitrary cuisine arguments
-results = list(
-    collection.aggregate([
-        {
-        "$group": {
-            "_id": {"cuisine":"abc"},
-            }   
-        }])
-)
-print(len(results))
-print(results)
-
-list(collection.find())[0]
-
-results = list(
-    collection.aggregate([
-        {
-        "$group": {
-            "_id": {"cuisine":"$metadata"},
-            }   
-        }])
-)
-print(len(results))
-
-results = list(
-    collection.aggregate([
-        {
-        "$group": {
-            "_id": {"cuisine":"$metadata.cuisine"},
-            }   
-        }])
-)
-print(len(results))
-
-results = list(
-    collection.aggregate([
-        {
-        "$group": {
-            "_id": {"cuisine":"$metadata.cuisine"},
-            "count": {"$sum":1},
-            }   
-        }])
-)
-print(results)
-
-results = list(
-    collection.aggregate([
-        {
-        "$group": {
-            "_id": {"cuisine":"$metadata.cuisine"},
-            "count": {"$sum":1},
-            "average": {"$avg":"$rating"},
-            }   
-        }])
-)
-
-```
-
-## 5.Modifying Incoming Doc Data  
-
-```bash
-python -i src/db_client.py
-client = get_db_client()
-db = client.business
-collection = db.rating_over_time
-collection.find()
-len(list(collection.find()))
-##################################
-
-results = list(
-    collection.aggregate([
-        {
-            "$project": {
-                "date":{
-                    "$dateToString": {"format":"%Y-%m", "date": "$timestamp"}
-                }
-            }
-        }
-    ])
-)
-
-print(len(results))
-```
-
-## 6.Time Series Aggregations  
-
-```bash
-python -i src/db_client.py
-client = get_db_client()
-db = client.business
-collection = db.rating_over_time
-len(list(collection.find()))
-##################################
-
-results = list(
-    collection.aggregate([
-        {
-            "$project": {
-                "date":{
-                    "$dateToString": {"format":"%Y-%m", "date": "$timestamp"}
-                },
-                "cuisine": "$metadata.cuisine",
-                "rating": "$rating",
-                }
-        },
-        {
-            "$group": {               
-                "_id": { 
-                    "cuisine": "$cuisine",
-                    "date": "$date"},
-                "avg": {"$avg": "$rating"}
-            }
-        },
-        {"$addFields": {"cuisine": "$_id.cuisine"}},
-        {"$addFields": {"date": "$_id.date"}},
-    ])
-)
-
-print(len(results))
-```
-
-## 7.Match Filter & Sorting on Aggregations    
-
-### Sort  
- - {"$sort": {"date": 1}} -> oldest to newest
- - {"$sort": {"date": -1}} -> newest to oldest
+First, we'll set up our MongoDB connection using Beanie. In `database.py`:
 
 ```python
-results = list(
-    collection.aggregate([
-        {
-            "$project": {
-                "date":{
-                    "$dateToString": {"format":"%Y-%m", "date": "$timestamp"}
-                },
-                "cuisine": "$metadata.cuisine",
-                "rating": "$rating",
-                }
-        },
-        {
-            "$group": {               
-                "_id": { 
-                    "cuisine": "$cuisine",
-                    "date": "$date"},
-                "avg": {"$avg": "$rating"}
+from beanie import init_beanie
+from motor import motor_asyncio
+from app.server.models.models import Device, DeviceData
+
+async def init_db():
+    client = motor_asyncio.AsyncIOMotorClient("mongodb://localhost:27017")
+    database = client["ecm_mongo_db"]
+    
+    collection_names = await database.list_collection_names(filter={"name": "DeviceData"})
+    if "device_data" not in collection_names:
+        await database.command({
+            "create": "DeviceData",
+            "timeseries": {
+                "timeField": "timestamp",
+                "metaField": "metadata",
+                "granularity": "seconds"
             }
-        },
-        {"$addFields": {"cuisine": "$_id.cuisine"}},
-        {"$addFields": {"date": "$_id.date"}},
-        {"$sort": {"date": 1}},
-    ])
-)
-
-results[:10]
-
-results[-10:] 
-
+        })
+    
+    await init_beanie(database=database, document_models=[Device, DeviceData])
 ```
 
-### Filter/Match
-
-Filter the whole object by dates before sorting and applying aggregations  
+If your database has a user/password authentication scheme you can adapt the AsyncIOMotorClient to the following:
 
 ```python
-import datetime 
-
-results = list(
-    collection.aggregate([
-        {
-            "$match": {
-                "timestamp": {
-                    "$gte": datetime.datetime.now() - datetime.timedelta(days=50), 
-                    "$lte": datetime.datetime.now()}
-            }
-        },
-        {
-            "$project": {
-                "date":{
-                    "$dateToString": {"format":"%Y-%m", "date": "$timestamp"}
-                },
-                "cuisine": "$metadata.cuisine",
-                "rating": "$rating",
-                }
-        },
-        {
-            "$group": {               
-                "_id": { 
-                    "cuisine": "$cuisine",
-                    "date": "$date"},
-                "avg": {"$avg": "$rating"}
-            }
-        },
-        {"$addFields": {"cuisine": "$_id.cuisine"}},
-        {"$addFields": {"date": "$_id.date"}},
-        {"$sort": {"date": -1}},
-    ])
-)
-
-results[:10]
-
+client = motor_asyncio.AsyncIOMotorClient("mongodb://<user>:<password>@localhost:27017")
 ```
 
-## 8.Pandas & MongoDB  
+It's important to notice that we're trying to create a time series collection that's called "DeviceData". Our objective with making the collection a time series is that, when querying the collection with timestamps, something that is extremely common in queries for sensor data, the search will be more efficient and faster.
 
+## Defining Models and Schemas
+
+Next, we'll define our data models using Beanie. In `models.py`:
 
 ```python
-import pandas as pd
+from pydantic import BaseModel, Field
+from beanie import Document
+from datetime import datetime
 
-dataset = list(
-    collection.aggregate([        
-        {
-            "$project": {
-                "date":{
-                    "$dateToString": {"format":"%Y-%m", "date": "$timestamp"}
-                },
-                "cuisine": "$metadata.cuisine",
-                "rating": "$rating",
-                }
-        },
-        {
-            "$group": {               
-                "_id": { 
-                    "cuisine": "$cuisine",
-                    "date": "$date"},
-                "average": {"$avg": "$rating"}
-            }
-        },
-        {"$addFields": {"cuisine": "$_id.cuisine"}},
-        {"$addFields": {"date": "$_id.date"}},
-        {"$sort": {"date": 1}},
-    ])
-)
+class Device(Document):
+    name: str = Field(...)
+    location: dict[str, float] = Field(...)
+    data_types: list[str] = Field(...)
+    
+    class Settings:
+        collection = "Device"
 
-df = pd.DataFrame(dataset)
-df["date"] = pd.to_datetime(df["date"])
-df = df[["date", "cuisine", "average"]]
-df.set_index("date", inplace=True)
-df.head().round(2)
+class ReadingMetadata(BaseModel):
+    variable_type: str
+    device_id: str
+
+class DeviceData(Document):
+    device_id: str = Field(...)
+    data: dict[str, float] = Field(...)
+    timestamp: datetime = Field(...)
+    metadata: ReadingMetadata = Field(...)
+    
+    class Settings:
+        collection = "DeviceData"
 ```
 
-# Blog TS+MongoDB  
+In this case we have defined a Device class that will act as our device definition, for each sensor we have we will have an entry on the Device collection. In this case we have defined a list of data types so we can have freedom of adding different types of sensors later on the life cycle of our application.
 
-**Time Series with Python & MongoDB Guide**  
-<https://www.codingforentrepreneurs.com/blog/time-series-with-python-mongodb-guide>  
+Also we have a DeviceData collection that we previously defined as a time series. In the definition of this class we add a metadata field, that we will use to identify the variable type being stored, this could come in handy if we want to search for all the data points containing a specific type of variable within a desired timestamp range.
+
+We will also define a file called "schemas.py" which will contain the schema we will use to read the sensor data within our POST request route.
+
+```python
+from pydantic import BaseModel
+
+class DeviceReading(BaseModel):
+    value: dict[str, float]
+    timestamp: int
+```
+
+This will come in handy later on, when we generate a standard way of sending data that can be used in the docs.
+
+## Creating API Endpoints
+
+We'll create endpoints to handle our IoT data in `device.py`:
+
+```python
+from datetime import datetime
+from beanie import PydanticObjectId
+from fastapi import APIRouter, HTTPException
+from starlette import status
+from app.server.models.models import Device, DeviceData, ReadingMetadata
+from app.server.models.schemas import DeviceReading
+
+router = APIRouter(prefix="/device", tags=["Device"])
+
+@router.get("/")
+async def get_devices():
+    devices = await Device.all().to_list()
+    return devices
+
+@router.get("/{device_id}")
+async def get_device(device_id: PydanticObjectId):
+    device = await Device.get(device_id)
+    if not device:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Device with ID {device_id} not found"
+        )
+    return device
+
+@router.post("/")
+async def create_device(device: Device):
+    await device.insert()
+    return device
+
+@router.post("/{device_id}/reading", response_model=DeviceData)
+async def add_reading(device_id: PydanticObjectId, reading: DeviceReading):
+    device = await Device.get(device_id)
+    if not device:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Device with ID {device_id} not found"
+        )
+    
+    timestamp = datetime.fromtimestamp(reading.timestamp)
+    value_keys = list(reading.value.keys())
+    metadata = ReadingMetadata(
+        variable_type=value_keys[0],
+        device_id=str(device.id)
+    )
+    
+    device_data = DeviceData(
+        device_id=str(device_id),
+        data=reading.value,
+        timestamp=timestamp,
+        metadata=metadata
+    )
+    
+    await device_data.insert()
+    return device_data
+
+@router.get("/{device_id}/readings", response_model=list[DeviceData])
+async def get_readings(
+    device_id: PydanticObjectId,
+    start_timestamp: int,
+    end_timestamp: int
+):
+    device = await Device.get(device_id)
+    if not device:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Device with ID {device_id} not found"
+        )
+    
+    start_datetime = datetime.fromtimestamp(start_timestamp)
+    end_datetime = datetime.fromtimestamp(end_timestamp)
+    
+    readings = await DeviceData.find(
+        DeviceData.device_id == str(device_id),
+        DeviceData.timestamp >= start_datetime,
+        DeviceData.timestamp <= end_datetime
+    ).to_list()
+    
+    return readings
+```
+
+Here we define specific routes to handle the different operations related to the device and the data. In a complete application, we might want to add a PUT request, as well as a DELETE request to the device, so we can update it, or delete entirely, the process in that regard is the same as what we're doing with the GET and POST requests.
+
+An important observation here is that our `get_readings` endpoint uses integers as timestamps, which means we're receiving epoch values. This is a convenient way to handle the timestamps, so we can pass numbers without any tabulations or spaces on the query parameters in the URL. For testing purposes you can check the following [site](https://www.epochconverter.com/) that can give the epoch values for any timestamp.
+
+## Integrating Routes in FastAPI
+
+Finally, we'll integrate these routes into our FastAPI app in `api_app.py`:
+
+```python
+from fastapi import FastAPI
+from app.server.models.database import init_db
+from app.server.routes.device import router as device_router
+
+api_app = FastAPI()
+
+api_app.include_router(device_router, tags=["Device"])
+
+@api_app.on_event("startup")
+async def start_db():
+    await init_db()
+
+@api_app.get("/", response_model=dict)
+async def index():
+    return {"message": "Welcome to the ECM Device Server API"}
+```
+
+We add the router we declared on the "device.py" file, as well as the init_db function we created previously to handle the initialization of the database. We also add a route within this file to handle the root endpoint of our application.
+
+## Running the Application
+
+To run the application, create an `__init__.py` in the root directory to make the package importable and `main.py`:
+
+```python
+import uvicorn
+
+if __name__ == "__main__":
+    uvicorn.run("server.api_app:api_app", host="0.0.0.0", port=8080, reload=True)
+```
+
+This points to the api_app we created on the "api_app.py" file, by running the server like this is easier for us to test it just calling the python script on "main.py" like this.
+
+```bash
+python app/main.py
+```
+
+With this we can visit `http://localhost:8080/docs` to interact with the API. We should look to a view like the following.
+
+Here we can test the different endpoints for inserting and retrieving the data. An important test is to check how the data points are retrieved when using the timestamps for range delimitation.
+
+We can verify that the data is being stored correctly, with the metadata being stored as well. Is of particular note the fact that we can check the timestamps accordingly, and that all the timestamps belong to the specific range.
+
+## Conclusion
+
+In this blog post, we've walked through the process of setting up a FastAPI server with Beanie ODM to handle IoT sensor data as time series. This approach allows us to manage multiple data types effectively, leveraging MongoDB's flexibility while maintaining the performance and scalability required for real-time data processing.
+
+By integrating FastAPI with Beanie, we created a powerful and efficient solution for handling complex data structures. FastAPI's speed, ease of use, and asynchronous capabilities make it an excellent choice for developing RESTful APIs, especially for IoT applications that require handling numerous concurrent requests. Beanie, with its seamless MongoDB integration, offers robust schema validation, easy querying, and data manipulation, making it easier to work with time series data.
+
+## Key Takeaways
+
+• **Flexibility:** MongoDB's schema-less nature allows for easy adaptation to evolving data structures, which is particularly beneficial for IoT applications where sensor data formats may change over time.
+
+• **Unified Data Management:** Using MongoDB enables storing diverse data types in a single database, simplifying the architecture and reducing the complexity of managing multiple data stores.
+
+• **Efficient Querying and Analysis:** Despite MongoDB not being a specialized time series database, its powerful aggregation framework and indexing capabilities make it suitable for efficient querying and analysis of time series data.
+
+• **Scalability and Performance:** MongoDB's horizontal scalability ensures that your application can handle the increasing volume of IoT data, while FastAPI's asynchronous nature ensures high performance and responsiveness.
+
+## Next Steps
+
+Feel free to explore and extend this project to suit your specific needs. Whether you're adding more sophisticated data processing, implementing advanced querying features, or integrating with other services, the combination of FastAPI and Beanie provides a solid foundation for building scalable and efficient IoT applications.
+
+Happy coding, and may your journey into IoT and time series data management be as smooth and exciting as possible!
+
+---
+
+**Tags:** Python, IoT, Database, MongoDB, FastAPI
+
+**About the Author:** Jorge B. Aspiazu is an Electrical Engineer with a passion for technology, especially for programming languages.
 
 ## Git Workflow: Upload to New Branch  
 
@@ -555,945 +402,3 @@ git commit -m "Add blog post content and project updates"
 ```bash
 git push -u origin blog-post
 ```
-
-The `-u` flag sets the upstream tracking, so future pushes from this branch can be done with just `git push`.
-
-### Alternative: Check Current Branch Only
-```bash
-# To see which branch is currently active
-git branch --show-current
-```
-
-## Step 1: Create Project Directory  
-
-```bash
-# Create a directory for all projects:
-# mkdir -p ~/Dev
-
-# Create your project directory
-# mkdir -p ~/Dev/ts-pymongo
-
-# Setup VS Code Workspace (optional)
-echo "" > ts-pymongo.workspace
-```
-
-In ~/Dev/ts-pymongo/ts-pymongo.workspace add:
-```json
-{
-  "folders": [
-    {
-      "path": "."
-    }
-  ],
-  "settings": {}
-}
-```
-
-## Step 2: Docker Compose Configuration  
-In this step, we're going to use a local instance of MongoDB by leveraging Docker. The only reason to do it this way is to learn how to leverage MongoDB in your projects. Once you learn, using a managed MongoDB database is highly recommended so be sure to check out MongoDB on Linode when you're ready for production.
-Assuming you have Docker Desktop installed and at least one of the following commands work:
- - docker compose version
- - docker-compose version
-If either of the above commands do not work, consider using a managed instance on Linode right now.
-Docker Compose configuration
-In ~/Dev/ts-pymongo/, we'll add the following:
- - src/.env
- - docker-compose.yaml  
-
-First, ~/Dev/ts-pymongo/docker-compose.yaml: 
-```yaml
-version: '3.9'
-
-services:
-  mongo:
-    image: mongo
-    restart: always
-    ports: 
-      - 27017:27017
-    env_file: ./src/.env
-```  
-
-Let's add our environment variables for this to work:
-```bash
-mkdir -p ~/Dev/ts-pymongo/src
-echo "" > ~/Dev/ts-pymongo/src/.env
-```
-
-I create passwords like this with: 
-```bash
-python -c "import secrets;print(secrets.token_urlsafe(32))"
-```
-
-Docker & MongoDB Environment Variables When spinning up MongoDB in Docker or Docker compose we need to set the following enviroNment variables:
- - MONGO_INITDB_ROOT_USERNAME
- - MONGO_INITDB_ROOT_PASSWORD
-This is defined in the Official MongoDB Docker Image on [DockerHub](https://hub.docker.com/_/mongo/). 
-
-**Docker Compose Commands**
-There are 3 important commands we need to know for this project:
- - docker compose up -d: runs the database in the background
- - docker compose down: turns off the database; keeps data
- - docker compose down -v: removes the database; deletes data
-It's true there's a lot more to Docker and Docker Compose than this but we'll save those details for another time  
-
-```bash
-# runs the database in the background
-docker compose up -d
-
-# turns off the database; keeps data
-docker compose down 
-
-# removes the database; deletes data
-docker compose down -v
-```
-
-## Step 3: Create your Python Virtual Environment  
-
-Isolate your python projects by leveraging virtual environments. There are many ways to accomplish this but we'll use the built-in python package venv. 
-
-I recommend you use the Python distribution directly from python.org. 
-I do not recommend you use Anaconda, mini-conda, or any other Python distribution. Unofficial distributions, like Anaconda, can cause third-party dependency issues that are hard to diagnose which is why we're going to leave it out for now.  
-
-tldr
-```bash
-mkdir -p ~/Dev/ts-pymongo/
-cd ~/Dev/ts-pymongo/
-python3.10 -m venv venv
-```
-
-If on Windows, use C:\Python310\python.exe instead of python3.10.
-For a more detailed virtual environment creation, check the sections below. 
-If the tldr above works for you, skip to Step 3.
-
-macOS/Linux Virtual Environment Creation
-
-cd ~/Dev/ts-pymongo/
-python3.10 -m venv venv
-
-Notice that we used venv twice? The first -m venv is calling the python module. The second venv is what we're naming our virtual environment and venv is a conventional name.
-```bash
-# Activate it
-source venv/bin/activate
-
-# Update pip
-$(venv) python -m pip install pip --upgrade
-```
-
-Using python -m pip is the recommended method of handling pip installations. Using pip without python -m might cause system-wide dependency issues.
-
-Deactivate and Reactivate
-```bash
-$(venv) deactivate
-source venv/bin/activate
-```
-
-Activation-less Commands If you prefer to not activate your virtual environment, that's okay.  
-You'll just need to leverage venv/bin/ and related items. 
-So you can use the virtual environment python with: 
-
-```bash
-venv/bin/python --version
-
-# Or, for example, if you're using the Python package uvicorn, you can call:
-
-venv/bin/uvicorn
-
-# You can also use paths like:
-~/Dev/ts-pymongo/venv/bin/uvicorn
-# or
-/Users/cfe/Dev/ts-pymongo/venv/bin/uvicorn
-```
-
-Replace cfe as your username of course.
-Now you're ready for the next step.
-Windows Virtual Environment Creation
-
-cd ~/Dev/ts-pymongo/
-C:\Python310\python.exe -m venv venv
-
-C:\Python310\python.exe
-assumes this is the location where you installed Python.3.10. If you did not install it here, you'll need to locate the exact place you did install it before you create your virtual environment.
-One way to do that is to open up PowerShell (after you installed Python) and run:
-```bash
-python
-
-# This will either cause an error or it will enter the Python shell.
-
-import os
-import sys
-print(os.path.dirname(sys.executable))
-```
-This will yield something like:
-
-C:\Python38
-Whatever path os.path.dirname(sys.executable) yields you'll have to add python.exe to it in order to use python.
-For example, above yielded C:\Python38 and not C:\Python310. In that case you would use:
-
-C:\Python38\python.exe -m venv venv
-To create your virtual environment.
-Notice that we used venv twice? The first -m venv is calling the python module. The second venv is what we're naming our virtual environment and venv is a conventional name.
-Activate it
-
-./venv/Scripts/activate
-This will yield something like:
-
-(venv) PS C:\Users\cfe\Dev\ts-pymongo>
-We'll use $(venv) to denote an activated virtual environment going forward.
-Update pip
-
-$(venv) python -m pip install pip --upgrade
-Using python -m pip is the recommended method of handling pip installations. Using pip without python -m might cause system-wide dependency issues.
-Deactivate and Reactivate
-
-$(venv) deactivate
-./venv/Scripts/activate
-Activation-less Commands If you prefer to not activate your virtual environment, that's okay. You'll just need to leverage venv/bin/ and related items.
-So you can use the virtual environment python with:
-
-venv/Scripts/python --version
-Or, for example, if you're using the Python package uvicorn, you can call:
-
-venv/Scripts/uvicorn
-You can also use paths like:
-
-~/Dev/ts-pymongo/venv/Scripts/uvicorn
-or
-
-C:\Users\cfe\Dev\ts-pymongo\venv\Scripts\uvicorn
-Replace cfe with your username of course. Also, as you may know, PowerShell can use either forward slash / or backslash \.
-Now you're ready for the next step.
-
-## Step 4. Connect Python to MongoDB  
-
-At this point, we have the following available to us:
-A Python Virtual Environment
-A Running MongoDB instance
-Now it's time to connect Python to MongoDB
-1. Install Python Requirements
-Activate our virtual environment
-
-```bash
-source .venv/Scripts/activate
-```
-
-Create requirements.txt
-```bash
-echo "" > src/requirements.txt
-echo "pymongo" >> src/requirements.txt
-echo "python-decouple" >> src/requirements.txt
-echo "pandas" >> src/requirements.txt
-echo "matplotlib" >> src/requirements.txt
-``` 
-
-- pymongo (Docs) is the primary package we'll use to connect Python with MongoDB.
-- python-decouple (Docs) is a neat way to load .env secrets/configuration into our Python project.
-- pandas (Docs) is powerful way to work with datasets. We'll use it for exporting our time series plots.
-- matplotlib. (Docs) Pandas requires matplotlib to create charts and graphs.
-
-Install requirements  
-```bash
-uv add -r src/requirements.txt
-python -m pip install pip --upgrade
-python -m pip install -r src/requirements.txt
-```
-
-Create db_client.py In src/db_client.py add:
-
-```python
-from functools import lru_cache
-
-import decouple
-from pymongo import MongoClient
-
-@lru_cache
-def get_db_client(host='localhost'):
-    mongodb_un = decouple.config("MONGO_INITDB_ROOT_USERNAME")
-    mongodb_pw = decouple.config("MONGO_INITDB_ROOT_PASSWORD")
-    mongodb_host = decouple.config("MONGO_HOST", default='localhost')
-    db_url =  f"mongodb://{mongodb_un}:{mongodb_pw}@{mongodb_host}:27017"
-    return MongoClient(db_url)
-```
-
-**Let's break this down:**
- - lru_cache makes calling get_db_client a little more efficient during the same session. In other words, get_db_client will only create 1 instance of MongoClient which is exactly what we want if we turn this into a full web application.
- - decouple.config allows us to use our configuration from .env
- - get_db_client creates a Python MongoDB Client that connects to our Docker-based MongoDB.
- - MongoClient takes in the database url which ends up looking like MongoClient("mongodb://username:password@host:port"). MongoDB typically uses port 27017 which is why we have that port listed here. If you used a managed mongodb service, chances are good you will have to update the host by setting MONGO_HOST in .env.  
-
-## Step 5. Basic CRUD with PyMongo 
-
-Here's the process to leveraging CRUD in PyMongo:
-1. Connect to your MongoDB Client
-1. Select a Database
-1. Select a Collection
-1. Use CRUD operations
-
-Navigate in src and run the following:
-
-```bash
-cd src
-python
-
-# 1.Connect to your MongoDB Client
-import db_client
-client = db_client.get_db_client()
-
-# 2. Select a Database
-db = client.business
-
-# 3. Select a Collection
-collection = db["ratings"]
-
-# Let's verify what's in this collection
-list(collection.find())
-```
-
-If you just started this one, you should see [] as your response.
-Before we jump into the CRUD operations, let's break down what just happened.
- - client = db.get_db_client() initializes a connection to MongoDB
- - db = client.business declares a database to use
- - collection = db["ratings"] declares a collection to use  
-  
-
-If you're coming from SQL, you might be wondering:
- - Where is the command to create the database?
- - What is a collection? Is it a table?
- - Where is the command to create the collection?
- - When do we declare the fields we want to enforce in the collection?  
-
-A simple answer to these questions are: that's not how MongoDB works. Databases are groups of collections and collections of groups of documents. 
-
-These documents have incredible flexibility and can look a bit like this:
- - {"product": "sparkling water", "price": 1.99}
- - {"location": "Austin, Texas", "ranch_living": True}
-
-Both of these documents resemble dictionaries in Python and objects in JavaScript; and that's exactly the point.  
-
-With documents, the field names (ie keys) do not matter to storing the document. As the developer, you can enforce rules for field names but it's not required.  
-
-I think this is pretty neat and leaves the option for adding new data (including nested dictionaries/objects) whenever you need to.
-
-```bash
-# 4. Add Data as a Document to a Collection
-# This is beyond simple. Here's how it's done:
-
-# client = db.get_db_client()
-# db = client.business
-# collection = db["ratings"]
-
-data_document = {"name": "Torchy's Tacos", "location": "Austin, Texas", "rating": 4.5}
-collection.insert_one(data_document)  
-
-# Another way:
-db = client.business
-rating_data = {"name": "Gourdough's Big. Fat. Donuts.", "location": "Austin, Texas", "rating": 5.0}
-db["ratings"].insert_one(rating_data)
-
-# 5. List Data from Collection Now that we added two documents, we can list them out in the following ways:
-
-db = client.business
-list(db["ratings"].find())
-
-# or
-db = client.business
-collection = db["ratings"]
-list(collection.find())
-```
-
-the .find() method on a collection also allows for querying the data such as: 
-```python
-for obj in collection.find({"name": "Torchy's Tacos"}):
-    print(obj)
-```
-
-6. Get a Single Document from a Collection
-Looking back on our data, we see that _id is set with an ObjectId() class. This _id is unique to the document and it's something we can use for lookups (especially to edit or delete items).
-First let's get a document using the find_one method on our collection:
-
-```python
-document_result = collection.find_one({"name": "Torchy's Tacos"})
-document_result
-```  
-
-Notice that find_one in PyMongo maps to the findOne method in MongoDB (docs). Python uses snake_case so be sure to try snake_case if you ever find a method that doesn't seem to work.
-In this case, our document_result could yield None if our query yields no results. It's important to note that querying in MongoDB can get really complex so we'll leave that for another time. Let's get back to getting the value of the _id.  
-
-```python
-document_result = collection.find_one({"name": "Torchy's Tacos"})
-object_id = None
-if document_result is not None:
-    object_id = document_result['_id']
-print(object_id)
-``` 
-
-Now that we have an Object Id for a document, let's look it up:
-
-```python
-from bson.objectid import ObjectId
-
-if isinstance(object_id, str):
-    object_id = ObjectId(object_id)
-result = collection.find_one({"_id": object_id})
-print(result)
-```
-
-7. Update a Single Document from a Collection  
-
-First, let's start with our object_id since it's unique for any given document.  
-
-```python
-object_id = ObjectId(object_id)
-
-# Now, let's get new data:
-new_data = {"cuisine": "Mexican", "only_location": False, "total_visitor_count": 120_000}
-
-# To update, we're going to combine a query (in our case the object_id) as well as the data we want to change (using $set):
-query_filter = {"_id": object_id}
-update_data = {"$set": new_data}
-collection.update_one(query_filter, update_data)
-```
-
-Notice that we nested our new_data instead of another dictionary with the key $set. This will literally set the values within our document based on whatever is in new_data. You can use dot notation for setting data but that's outside the scope of what we're doing here.
-Now we're going to increment a field in our data.
-Above we set total_visitor_count to 120_000 (stored as 120000). This is the same thing as replacing the original value with our new value.
-But what if we wanted to do some math on this field? Let's see how it's done with the $inc operator:
-Add 500 visitors*  
-
-```bash
-increment_data = {"$inc": {"total_visitor_count": 500}}
-collection.update_one(query_filter, update_data)
-```
-
-Or
-Subtract 293 by adding -293 visitors*
-
-```bash
-decrement_data = {"$inc": {"total_visitor_count": -293}}
-collection.update_one(query_filter, update_data)
-```
-
-So both $set and $inc are incredibly useful for updating the data stored within a document. $inc is especially useful when you're dealing with storing integers or floats. Read more about $inc here and more about $set here as well as all other filed update operators here.  
-
-7. Delete a Single Document from a Collection  
-Let's create, update, and delete on this one: 
-
-```python  
-
-# Setup  
-import db_client
-client = db.get_db_client()
-db = client.business
-collection = db["ratings"]
-
-# Create
-data = {'name': "CFE Tacos", 'location': 'Austin, Texas', 'rating': 5}
-result = collection.insert_one(data)
-object_id = result.inserted_id
-object_id
-
-# Update 
-data = {'name': "Just-in-Time Tacos"}
-collection.update_one({"_id": object_id}, {"$set": data})
-new_visitors_data = {'visitors': 300_000}
-collection.update_one({"_id": object_id}, {"$inc": new_visitors_data})
-new_visitors_data_again = {'visitors': 320_120}
-collection.update_one({"_id": object_id}, {"$inc": new_visitors_data_again})
-
-# List Matching Data
-list(collection.find({"name": "Just-in-Time Tacos"}))
-
-# Retrieve New Data
-stored_result = collection.find_one({"_id": object_id})
-print(stored_result)
-
-# Delete Listing
-delete_result = collection.delete_one({"_id": object_id})
-print(delete_result.deleted_count, delete_result.acknowledged, delete_result.raw_result)
-```
-
-Now that we understand some of the basics of MongoDB, let's start using Time Series data.
-
-## Step 6. Generate Time Series Collection & Data  
-Let's create a new collection that's designed for time series [docs](https://www.mongodb.com/docs/manual/core/timeseries-collections/):
-  
-We're going to add a new time series by using the create_collection method like this:  
-```bash
-name = "tscollection"
-db.create_collection(
-        name,
-        timeseries= {
-            "timeField": "timestamp",
-            "metaField": "metadata",
-            "granularity": "seconds"
-        }
-    )
-```
-
-Let's add it to our src folder.
-In src/collection_create.py add:
-
-```python
-
-from pymongo import errors
-
-import db_client # created above
-
-def create_ts(name='rating_over_time'):
-    """
-    Create a new time series collection
-    """
-    client = db_client.get_db_client()
-    db = client.business
-    try:
-        db.create_collection(
-               name,
-                timeseries= {
-                    "timeField": "timestamp",
-                    "metaField": "metadata",
-                    "granularity": "seconds"
-                }
-            )
-    except errors.CollectionInvalid as e:
-        print(f"{e}. Continuing")
-
-def drop(name='rating_over_time'):
-    """
-    Drop any given collection by name
-    """
-    client = db_client.get_db_client()
-    db = client.business
-    try:
-        db.drop_collection(name)
-    except errors.CollectionInvalid as e:
-        print(f"Collection error:\n {e}")
-        raise Exception("Cannot continue")
-
-```
-
-
-We now have convenient create_ts and drop methods that we'll use in the generate_data.py module create next.
-Let's breakdown what's happening in the create_ts function:
- - db.create_collection is a command that allows us to create a collection. In this case, we are included the required parameters to create a time series collection.
- - rating_over_time is simply the name of the collection.
- - timeseries={} is the parameter we must add for time series data.
-     - timeField is the field name we'll set with a python datetime object
-     - metaField is we'll use this for unique identifies for this document that rarely (if ever) change. Examples we'll use are restaurant name and cuisine type.
-     - granularity options are "seconds", "minutes", or "hours". This is how the data will be stored (along with the timestamp). Ideally ou "choose the closest match to the time span between consecutive incoming measurements."
-     - errors.CollectionInvalid is the exception that will be raised if rating_over_time already exists. 
-
-Given this criteria, we'll have following formatted data document inserted into our collection at any given time.   
-The key to this is not change the field we have below. A few of them we assigned directly to parameters in timeseries={} above.
-
-```python
-data = {
-  "metadata": {
-    "name": "Some String",
-    "cuisine": "Another String"
-  },
-  "rating": 4.5,
-  "timestamp": datetime.datetime.now()
-}
-```
-
-Generate Random Data Now that we can create a time-series collection, let's build a module that will generate random data for us. This data will be generated randomly (really pseudo-random via the random package) by the functionality below.
-In src/generate_data.py let's add the following:
-
-```python
-import datetime
-import random
-import sys
-
-import collection_create
-import db_client
-
-
-
-name_choices =  ["Big", "Goat", "Chicken", "Tasty", "Salty", "Fire", "Forest", "Moon", "State", "Texas", "Bear", "California"]
-cuisine_choices = ["Pizza", "Bar Food", "Fast Food", "Pasta","Tacos", "Sushi", "Vegetarian", "Steak", "Burgers"]
-
-
-def get_random_name():
-    _name_start = random.choice(name_choices)
-    _name_end = random.choice(name_choices)
-    return f"{_name_start} {_name_end}"
-
-def get_random_cuisine():
-    selected_cuisine = random.choice(cuisine_choices)
-    return selected_cuisine
-  
-def get_random_rating(skew_low=True):
-    part_a = list([random.randint(1, 3) for i in range(10)])
-    part_b = list([random.randint(3, 4) for i in range(10)])
-    if not skew_low:
-      part_c = list([random.randint(4, 5) for i in range(25)])
-    else:
-      part_c = list([random.randint(4, 5) for i in range(5)])
-    _ratings =  part_a + part_b +  part_c
-    return random.choice(_ratings)
-
-def get_random_timestamp():
-    now = datetime.datetime.now()
-    delta = now - datetime.timedelta(days=random.randint(0, 5_000), minutes=random.randint(0, 60), seconds=random.randint(0, 60))
-    return delta
-
-def get_or_generate_collection(name="rating_over_time"):
-    client = db_client.get_db_client()
-    db = client.business
-    collection_create.create(name=name)
-    collection = db[name]
-    return collection
-
-def run(collection, iterations=50, skew_results=True):
-    completed = 0
-    for n in range(0, iterations):
-        timestamp = get_random_timestamp()
-        name = get_random_name()
-        cuisine = get_random_cuisine()
-        rating = get_random_rating(skew_low=True)
-        if skew_results:
-          if cuisine.lower() == "mexican":
-              rating = random.choice([4, 5])
-          elif cuisine.lower() == "bar food":
-              rating = random.choice([1, 2])
-          elif cuisine.lower() == "sushi":
-              rating = get_random_rating(skew_low=False)              
-        data = {
-          "metadata": {
-            "name": name,
-            "cuisine": cuisine
-          },
-          "rating": rating,
-          "timestamp": timestamp
-        }
-        result = collection.insert_one(data)
-        if result.acknowledged:
-            completed += 1
-        if n > 0 and n % 1000 == 0:
-            print(f"Finished {n} of {iterations} items.")
-    print(f"Added {completed} items.")
-
-
-if __name__ == "__main__":
-    iterations = 50
-    name="rating_over_time"
-    try:
-        iterations = int(sys.argv[1])
-    except:
-        pass
-    try:
-        name= sys.argv[2]
-    except:
-        pass
-    collection = get_or_generate_collection(name="rating_over_time")
-    run(collection, iterations=iterations)
-
-```
-
-Now let's generate some data. First we'll start off with 100 items:
-```bash
-python generate_data.py 100
-python generate_data.py 1_000
-python generate_data.py 100_000
-```
-
-This might take awhile but it's a good idea to have a diverse dataset in our collection. It's not actually diverse because the data is simulated but it will, hopefully, show us some interesting patterns in the data.
-Now you might be wondering about this block:  
-
-```python
-if skew_results:
-  if cuisine.lower() == "mexican":
-      rating = random.choice([4, 5])
-  elif cuisine.lower() == "bar food":
-      rating = random.choice([1, 2])
-  elif cuisine.lower() == "sushi":
-      rating = get_random_rating(skew_low=False)
-
-```
-Using pseudo-random data generators like we did in this example will, after enough data, likely skew all of our data points to be roughly the same. Having this block allows us to skew the results a little more in the way we might like. Feel free to play around with this as you'd like going forward. The next step will show you how to review the time series results to see why this skew might be necessary.  
-
-
-## Step 7. Time Series Aggregation Pipeline  
-
-Now we're going to aggregate our time series data. This entire blog post is really about this step.
-Let's have a look.
-
-**Aggregation Pipeline Basics**  
-First and foremost, we need to see how we can actually aggregate data using PyMongo and MongoDB.
-I recommend using the Python Shell and/or Jupyter notebooks for this step.
-
-```bash
-python shell  
-
-import db_client
-
-client = db_client.get_db_client()
-db = client.business
-collection = db["rating_over_time"]
-print(collection.find_one())
-
-```
-
-We can refer to each field as follows:
- - timestamp
- - metadata
- - metadata.cuisine: this is mapped to the cuisine field within the metadata dictionary/object
- - metadata.name: this is mapped to the name field field within the metadata dictionary/object
- - _id: Document Object Id
- - rating: Integer value of this particular time series entry  
-
-It's important to note each field because one of the first steps in aggregation is to group these items in some way. 
-
-I want to get the average rating for a restaurant. With this data, I am assuming that metadata.name and metadata.cuisine are unique together. In other words, a restaurant with the same name but different cuisine will be treated as a different business all together.  
-
-Here's how we can aggregate this data: 
-
-```bash
-results = list(collection.aggregate([
-  {"$group": {
-   "_id": {"name": "$metadata.name", "cuisine": "$metadata.cuisine"},
-    "count": {"$sum": 1},
-    "currentAvg": {"$avg": "$rating"},
-  }}
-]))
-
-print(results[0])
-{'_id': {'name': 'Fire Tasty', 'cuisine': 'Steak'}, 'count': 182, 'currentAvg': 2.9615384615384617}
-
-print(len(results))
-
-```
-
-So we see a few things here that are important.  
- - collection.aggregate initializes a pipeline and takes a list [] as an argument. This list allows us to perform various operations on the data based on it's position in the list (more on this later).
- - {"$group": {}} denotes how we're going to group this data including group-related operations.
- - _id we must declare an _id for this group as this _id is how MongoDB will roll this data up.
- - {"name": "$metadata.name", "cuisine": "$metadata.cuisine"}:  
-- 
-In this case, we referencing two of the original fields from the collection (metadata.name and metadata.cuisine). To reference data from the collection we must use the format $fieldName.withDot.Notation; the dollar sign $ must proceed the field name. If you do not have a dollar sign, MongoDB will automatically set the field to whatever string you write.  
-
-The new fields name and cuisine are arbitrary.  You can name them business and food_type if you like. The results will be the same just with different field names  
-
-These two fields combine to make a unique combination for this aggregation.   
-This unique combo will be responsible for how the data is aggregated and how operations occur on the data.  
-In practice, the restaurant would probably have 2 other unique ids that we would consider adding to the metadata dictionary: location_id and business_id. I did not included these other fields for simplicity.
-- "count": {"$sum": 1}. The field count here is an arbitrary name once again but it makes sense for what data we're looking to exact. I want to know the total sum of records that match the _id we generated for this group. In other words, how many documents do we have that contain the same metadata.name and metadata.cuisine? - The {"$sum": 1} operator handles this for us.
-- "currentAvg": {"$avg": "$rating"}. Again, the currentAvg name is arbitrary.   
-- The important part is {"$avg": "$rating"}. In this case, we're using the $avg operator but on the field $rating.   
-- MongoDB will calculate the average rating for this entire group based the new group _id as well as the average field. 
-
-What if we wanted to round the currentAvg to 2 decimal places?
-Here's what our aggregation would look like:
-
-```bash
-results = list(collection.aggregate([
-  {"$group": {
-   "_id": {"name": "$metadata.name", "cuisine": "$metadata.cuisine"},
-    "count": {"$sum": 1},
-    "currentAvg": {"$avg": "$rating"},
-  }},
-  {"$addFields": {"roundedAverage": {"$round": [ "$currentAvg", 2]}}}
-]))
-```
-
-The changes are as follows:
-- {"$addFields": {}} is a new item in the collection.aggregate list. The roundedAverage field will be added after the first step is complete (ie the $group step). This is important so we can use the results of the first step.
-- {"roundedAverage": {}}: roundedAverage is the new field that we're adding to our aggregation. This addition will be handled on a smaller set of data since step 1 already occurred.
-- {"$round": [ "$currentAvg", 2]} The $round operator takes a list as argument [] that includes two main pieces: the field, and the decimal to round to. In our case we choose the $currentAvg field form the previous step in the aggregation until 2 decimal places.  
-
-To clean the data up one more time, we'll remove the field currentAverage since it contains too many decimal places.  
-
-```bash
-results = list(collection.aggregate([
-  {"$group": {
-   "_id": {"name": "$metadata.name", "cuisine": "$metadata.cuisine"},
-    "count": {"$sum": 1},
-    "currentAvg": {"$avg": "$rating"},
-  }},
-  {"$addFields": {"roundedAverage": {"$round": [ "$currentAvg", 2]}}},
-  { "$replaceWith": {
-    "$unsetField": {
-       "field": "currentAvg",
-       "input": "$$ROOT"
-   } } },
-]))
-```
-
-As we see:
-```bash
-  { "$replaceWith": {
-    "$unsetField": {
-       "field": "currentAvg",
-       "input": "$$ROOT"
-   } } },
-```
-Is the method for removing any field from the pervious step(s). In this case, currentAvg was the field that was removed.
-If review any given result we should see something like:
-```bash
-{'_id': {'name': 'Fire Tasty', 'cuisine': 'Steak'}, 'count': 211, 'roundedAverage': 2.95}
-```
-
-Now this is pretty cool. But this is standard MongoDB aggregation. It's not time series aggregation. Let's have a look on how to do that.  
-
-### The Time Series Aggregation Pipeline  
-
-Time Series data helps us understand changes over time. We could do days, months, weeks, years, hours, minutes, and even seconds. Anything smaller than seconds is a bit too far outside the scope of this blog post.  
-
-I'm going to use month and year for the time series portion our aggregation. In simple terms, grouping the data by month and year, performing averages, and eventually plotting those averages.  
-
-Now let's remember a key thing from the last aggregation we did: $group and _id. We have to generate an compelling _id that includes our time series data. But how to do that?   
-Do we want our data group with anything other than time series data? Perhaps cuisine type? Perhaps business name? Perhaps all of that?
-The first step we need to do is enrich our dataset with a group-friendly date string because the timestamp field is not a date field. Let's change that.
-To enrich an aggregation prior to grouping the data, we can use the $project operator. Like this: 
-
-```bash
-results = list(collection.aggregate([
-  {"$project": {
-    "date": { 
-        "$dateToString": { "format": "%Y-%m", "date": "$timestamp" } 
-    },
-  }}
-]))
-print(results[:1])
-```
-
-This will yield something like:
-[{'_id': ObjectId('62f2b8bc6672d1f1e9742914'), 'date': '2022-08'}]
-
-As we see $project actually modified the incoming data. Let's modify it so it contains the relevant details we need: cuisine and rating.
-
-```bash
-results = list(collection.aggregate([
-  {"$project": {
-    "date": { 
-        "$dateToString": { "format": "%Y-%m", "date": "$timestamp" } 
-    },
-    "cuisine": "$metadata.cuisine",
-    "rating": "$rating",
-  }}
-]))
-print(results[:1])
-
-```
-
-At this point we learned a few things:
-Using $project can help enrich our data and elminate data we don't need
-"$dateToString": { "format": "%Y-%m", "date": "$timestamp" } shows us how to convert our timestamp field $timestamp into the format date format %Y-%m which yields '2008-11'
-Both cuisine and rating reference data from the original collection
-
-Now let's create a group:
-
-```bash
-results = list(collection.aggregate([
-  {"$project": {
-    "date": { 
-        "$dateToString": { "format": "%Y-%m", "date": "$timestamp" } 
-    },
-    "cuisine": "$metadata.cuisine",
-    "rating": "$rating",
-  }},
-  { 
-      "$group": {
-        "_id": {
-            "cuisine": "$cuisine",
-            "date": "$date",
-        },
-        "average": { "$avg": "$rating" },
-      }
-     }
-]))
-print(results[:1])
-```
-
-This is so close to how I want it. I'm going to add 2 new fields to make plotting our results easier.
-
-```bash
-results = list(collection.aggregate([
-  {"$project": {
-    "date": { 
-        "$dateToString": { "format": "%Y-%m", "date": "$timestamp" } 
-    },
-    "cuisine": "$metadata.cuisine",
-    "rating": "$rating",
-  }},
-  { 
-      "$group": {
-        "_id": {
-            "cuisine": "$cuisine",
-            "date": "$date",
-        },
-        "average": { "$avg": "$rating" },
-      }
-     },
-     {"$addFields": {"cuisine": "$_id.cuisine" }},
-     {"$addFields": {"date": "$_id.date" }}
-]))
-print(results[:1])
-```
-
-An alternative method to adding these fields would be to do:
-
-```bash
-results = list(collection.aggregate([
-  {"$project": {
-    "date": { 
-        "$dateToString": { "format": "%Y-%m", "date": "$timestamp" } 
-    },
-    "cuisine": "$metadata.cuisine",
-    "rating": "$rating",
-  }},
-  { 
-      "$group": {
-        "_id": {
-            "cuisine": "$cuisine",
-            "date": "$date",
-        },
-        "average": { "$avg": "$rating" },
-        "cuisine": { "$first": "$cuisine" }, 
-        "date": { "$first": "$date" },
-      }
-     },
-]))
-print(results[:1])
-
-```
-
-Both { "$first": "$cuisine" } and { "$first": "$date" } will get the first instance in the list of items that feed into this group. We could actually grab any instance simply because the data is being grouped by these same fields. The previous method is preferred in my opinion.  
-
-**Plotting PyMongo & MongoDB Time Series with Python Pandas**
-Earlier in this post, we installed pandas. The only reason to install this was to simply turn our time series aggregation pipeline into a plotted chart.  
-
-It's pretty simple.
-First, we need to use pandas:
-```bash
-import pandas as pd
-df = pd.DataFrame(results)
-df = df[['date', 'cuisine', 'average']]
-df['date'] = pd.to_datetime(df['date'])
-df.set_index('date', inplace=True)
-start_date = '2023-01-01'
-end_date = '2025-12-31'
-time_series_data =  df.loc[start_date:end_date].groupby('cuisine')['average']
-```
-
-You can play around with the start_date and end_date as you see fit. You can also omit the entire .loc[start_date:end_date] all together if you just want all the data from the pipeline. I recommend leveraging the pymongo pipeline more than pandas since MongoDB will most likely be much more efficient than pandas for this data. Either way, it's good to experiment with both! 
-
-Finally, let's plot! 
-
-```bash
-# time_series_data.plot(legend=True)
-# plot_series = time_series_data.plot(legend=True)
-# plot_figure = plot_series[0].get_figure()
-# plot_figure.savefig("output.png")
-...
-
-python src/chart.py
-```  
-
-In your project you should see a new folder plot/cuisines with some charts in it.  
-
-**Wrap up**  
-
-Nice work if you got this far! Time Series Data in MongoDB is incredibly compelling.  
-The nice thing about a lot of the code above is we can use it within a web application (like FastAPI or Flask) with very little changes.  
-MongoDB has a lot of promising features for a database that makes modern time series development such a joy. 
-
