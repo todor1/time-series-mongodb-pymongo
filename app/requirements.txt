@@ -3,3 +3,4 @@ beanie
 motor
 uvicorn[standard]
 pydantic
+python-decouple
